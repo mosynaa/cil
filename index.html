@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="it">
+<!DOCTYPE html>
+<html lang="it">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -91,13 +92,23 @@
   }
 </style>
 </head>
-<body><h1>Catalogo Ordini</h1><div class="top-bar">
+<body>
+
+<h1>Catalogo Ordini</h1>
+
+<div class="top-bar">
   <input type="text" id="nomeCliente" placeholder="Nome Cliente" />
   <select id="categoriaFiltro"><option value="tutte">Tutte le categorie</option></select>
   <input type="text" id="cercaProdotto" placeholder="Cerca prodotto..." />
+  <button id="aggiungiManualeBtn" class="secondary">Aggiungi Articolo Manuale</button>
   <button id="generaExcelBtn">Genera Excel</button>
   <button id="generaPdfBtn" class="secondary">Genera PDF</button>
-</div><table id="tabellaProdotti">
+</div>
+
+<label for="noteCliente">Note ordine:</label>
+<textarea id="noteCliente" placeholder="Inserisci eventuali note..."></textarea>
+
+<table id="tabellaProdotti">
   <thead>
     <tr>
       <th>Codice</th>
@@ -107,9 +118,13 @@
     </tr>
   </thead>
   <tbody></tbody>
-</table><label for="noteCliente">Note ordine:</label>
+</table>
 
-<textarea id="noteCliente" placeholder="Inserisci eventuali note..."></textarea><script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script><script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
 (async () => {
   const tabellaBody = document.querySelector('#tabellaProdotti tbody');
   const categoriaFiltro = document.getElementById('categoriaFiltro');
@@ -118,6 +133,7 @@
   const noteCliente = document.getElementById('noteCliente');
   const generaExcelBtn = document.getElementById('generaExcelBtn');
   const generaPdfBtn = document.getElementById('generaPdfBtn');
+  const aggiungiManualeBtn = document.getElementById('aggiungiManualeBtn');
 
   let prodotti = [];
   let categorie = new Set();
@@ -182,6 +198,47 @@
         tabellaBody.appendChild(riga);
       }
     });
+
+    // Aggiungi anche i manuali
+    Object.keys(datiSalvati).forEach(codice => {
+      if (!prodotti.find(p => p.codice === codice)) {
+        const riga = document.createElement('tr');
+
+        const tdCodice = document.createElement('td');
+        tdCodice.textContent = codice;
+        riga.appendChild(tdCodice);
+
+        const tdDesc = document.createElement('td');
+        tdDesc.textContent = datiSalvati[codice].descrizione || '';
+        riga.appendChild(tdDesc);
+
+        const tdQty = document.createElement('td');
+        const inputQty = document.createElement('input');
+        inputQty.type = 'text';
+        inputQty.placeholder = 'CT';
+        inputQty.className = 'qty-input';
+        inputQty.value = datiSalvati[codice].qty || '';
+        inputQty.addEventListener('input', () => {
+          datiSalvati[codice].qty = inputQty.value;
+        });
+        tdQty.appendChild(inputQty);
+        riga.appendChild(tdQty);
+
+        const tdPrezzo = document.createElement('td');
+        const inputPrezzo = document.createElement('input');
+        inputPrezzo.type = 'text';
+        inputPrezzo.placeholder = 'P.P.';
+        inputPrezzo.className = 'price-input';
+        inputPrezzo.value = datiSalvati[codice].prezzo || '';
+        inputPrezzo.addEventListener('input', () => {
+          datiSalvati[codice].prezzo = inputPrezzo.value;
+        });
+        tdPrezzo.appendChild(inputPrezzo);
+        riga.appendChild(tdPrezzo);
+
+        tabellaBody.appendChild(riga);
+      }
+    });
   }
 
   function popolaCategorie() {
@@ -206,12 +263,13 @@
 
     Object.keys(datiSalvati).forEach(codice => {
       const prod = prodotti.find(p => p.codice === codice);
-      if (prod && datiSalvati[codice].qty) {
+      const descrizione = prod ? prod.descrizione : datiSalvati[codice].descrizione;
+      if (datiSalvati[codice].qty) {
         dati.push([
           codice,
-          prod.descrizione,
-          datiSalvati[codice].qty,
-          datiSalvati[codice].prezzo || prod.prezzo || 'P.P.'
+          descrizione || '',
+          datiSalvati[codice].qty || 'CT',
+          datiSalvati[codice].prezzo || (prod ? prod.prezzo : 'P.P.')
         ]);
       }
     });
@@ -219,7 +277,6 @@
     const ws = XLSX.utils.aoa_to_sheet(dati);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Ordine");
-
     XLSX.writeFile(wb, `Ordine_${cliente.replace(/\s+/g, '_')}.xlsx`);
   }
 
@@ -227,26 +284,37 @@
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     let y = 10;
-    doc.text(`Ordine per: ${nomeCliente.value}`, 10, y);
+
+    doc.text(`Cliente: ${nomeCliente.value}`, 10, y);
     y += 10;
     if (noteCliente.value) {
       doc.text(`Note: ${noteCliente.value}`, 10, y);
       y += 10;
     }
+    y += 5;
     doc.text("Codice | Descrizione | Quantità | Prezzo", 10, y);
     y += 10;
 
     Object.keys(datiSalvati).forEach(codice => {
       const prod = prodotti.find(p => p.codice === codice);
-      if (prod && datiSalvati[codice].qty) {
-        const line = `${codice} | ${prod.descrizione} | ${datiSalvati[codice].qty} | ${datiSalvati[codice].prezzo || prod.prezzo || 'P.P.'}`;
-        doc.text(line, 10, y);
+      const descrizione = prod ? prod.descrizione : datiSalvati[codice].descrizione;
+      if (datiSalvati[codice].qty) {
+        doc.text(`${codice} | ${descrizione || ''} | ${datiSalvati[codice].qty} | ${datiSalvati[codice].prezzo || (prod ? prod.prezzo : 'P.P.')}`, 10, y);
         y += 10;
       }
     });
 
     doc.save(`Ordine_${nomeCliente.value.replace(/\s+/g, '_')}.pdf`);
   }
+
+  aggiungiManualeBtn.addEventListener('click', () => {
+    const codice = prompt("Inserisci codice articolo:");
+    const descrizione = prompt("Inserisci descrizione articolo:");
+    if (codice && descrizione) {
+      datiSalvati[codice] = { descrizione, qty: '', prezzo: '' };
+      mostraProdotti();
+    }
+  });
 
   prodotti = await caricaCSV('https://raw.githubusercontent.com/mosynaa/ordinecil/main/catalogo.csv');
   prodotti.forEach(p => {
@@ -262,5 +330,7 @@
   generaExcelBtn.addEventListener('click', generaExcel);
   generaPdfBtn.addEventListener('click', generaPdf);
 })();
-</script></body>
+</script>
+
+</body>
 </html>
