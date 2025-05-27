@@ -111,3 +111,156 @@
 
 <textarea id="noteCliente" placeholder="Inserisci eventuali note..."></textarea><script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script><script>
 (async () => {
+  const tabellaBody = document.querySelector('#tabellaProdotti tbody');
+  const categoriaFiltro = document.getElementById('categoriaFiltro');
+  const cercaProdotto = document.getElementById('cercaProdotto');
+  const nomeCliente = document.getElementById('nomeCliente');
+  const noteCliente = document.getElementById('noteCliente');
+  const generaExcelBtn = document.getElementById('generaExcelBtn');
+  const generaPdfBtn = document.getElementById('generaPdfBtn');
+
+  let prodotti = [];
+  let categorie = new Set();
+  let datiSalvati = {};
+
+  function caricaCSV(url) {
+    return new Promise((resolve, reject) => {
+      Papa.parse(url, {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => resolve(results.data),
+        error: (err) => reject(err)
+      });
+    });
+  }
+
+  function mostraProdotti() {
+    const catSelezionata = categoriaFiltro.value.toLowerCase();
+    const ricerca = cercaProdotto.value.toLowerCase();
+    tabellaBody.innerHTML = '';
+
+    prodotti.forEach(({ codice, descrizione, categoria, prezzo }) => {
+      if ((catSelezionata === 'tutte' || categoria.toLowerCase() === catSelezionata) &&
+          (descrizione.toLowerCase().includes(ricerca) || codice.toLowerCase().includes(ricerca))) {
+        const riga = document.createElement('tr');
+
+        const tdCodice = document.createElement('td');
+        tdCodice.textContent = codice;
+        riga.appendChild(tdCodice);
+
+        const tdDesc = document.createElement('td');
+        tdDesc.textContent = descrizione;
+        riga.appendChild(tdDesc);
+
+        const tdQty = document.createElement('td');
+        const inputQty = document.createElement('input');
+        inputQty.type = 'text';
+        inputQty.placeholder = 'CT';
+        inputQty.className = 'qty-input';
+        inputQty.value = datiSalvati[codice]?.qty || '';
+        inputQty.addEventListener('input', () => {
+          if (!datiSalvati[codice]) datiSalvati[codice] = {};
+          datiSalvati[codice].qty = inputQty.value;
+        });
+        tdQty.appendChild(inputQty);
+        riga.appendChild(tdQty);
+
+        const tdPrezzo = document.createElement('td');
+        const inputPrezzo = document.createElement('input');
+        inputPrezzo.type = 'text';
+        inputPrezzo.placeholder = prezzo || 'P.P.';
+        inputPrezzo.className = 'price-input';
+        inputPrezzo.value = datiSalvati[codice]?.prezzo || '';
+        inputPrezzo.addEventListener('input', () => {
+          if (!datiSalvati[codice]) datiSalvati[codice] = {};
+          datiSalvati[codice].prezzo = inputPrezzo.value;
+        });
+        tdPrezzo.appendChild(inputPrezzo);
+        riga.appendChild(tdPrezzo);
+
+        tabellaBody.appendChild(riga);
+      }
+    });
+  }
+
+  function popolaCategorie() {
+    categoriaFiltro.innerHTML = '<option value="tutte">Tutte le categorie</option>';
+    Array.from(categorie).sort().forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat.toLowerCase();
+      opt.textContent = cat;
+      categoriaFiltro.appendChild(opt);
+    });
+  }
+
+  function generaExcel() {
+    const cliente = nomeCliente.value.trim() || "(Non specificato)";
+    const note = noteCliente.value.trim();
+    const dati = [];
+
+    dati.push(["Cliente:", cliente]);
+    if (note) dati.push(["Note:", note]);
+    dati.push([]);
+    dati.push(["Codice", "Descrizione", "Quantità", "Prezzo"]);
+
+    Object.keys(datiSalvati).forEach(codice => {
+      const prod = prodotti.find(p => p.codice === codice);
+      if (prod && datiSalvati[codice].qty) {
+        dati.push([
+          codice,
+          prod.descrizione,
+          datiSalvati[codice].qty,
+          datiSalvati[codice].prezzo || prod.prezzo || 'P.P.'
+        ]);
+      }
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(dati);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Ordine");
+
+    XLSX.writeFile(wb, `Ordine_${cliente.replace(/\s+/g, '_')}.xlsx`);
+  }
+
+  function generaPdf() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    let y = 10;
+    doc.text(`Ordine per: ${nomeCliente.value}`, 10, y);
+    y += 10;
+    if (noteCliente.value) {
+      doc.text(`Note: ${noteCliente.value}`, 10, y);
+      y += 10;
+    }
+    doc.text("Codice | Descrizione | Quantità | Prezzo", 10, y);
+    y += 10;
+
+    Object.keys(datiSalvati).forEach(codice => {
+      const prod = prodotti.find(p => p.codice === codice);
+      if (prod && datiSalvati[codice].qty) {
+        const line = `${codice} | ${prod.descrizione} | ${datiSalvati[codice].qty} | ${datiSalvati[codice].prezzo || prod.prezzo || 'P.P.'}`;
+        doc.text(line, 10, y);
+        y += 10;
+      }
+    });
+
+    doc.save(`Ordine_${nomeCliente.value.replace(/\s+/g, '_')}.pdf`);
+  }
+
+  prodotti = await caricaCSV('https://raw.githubusercontent.com/mosynaa/ordinecil/main/catalogo.csv');
+  prodotti.forEach(p => {
+    if(p.categoria && p.categoria.trim() !== '') {
+      categorie.add(p.categoria.trim());
+    }
+  });
+  popolaCategorie();
+  mostraProdotti();
+
+  categoriaFiltro.addEventListener('change', mostraProdotti);
+  cercaProdotto.addEventListener('input', mostraProdotti);
+  generaExcelBtn.addEventListener('click', generaExcel);
+  generaPdfBtn.addEventListener('click', generaPdf);
+})();
+</script></body>
+</html>
