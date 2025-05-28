@@ -6,168 +6,166 @@
   <title>Catalogo Ordini</title>
   <style>
     body {
-      font-family: sans-serif;
-      margin: 1rem;
-      background: #f7f7f7;
+      font-family: Arial, sans-serif;
+      padding: 20px;
     }
     h1 {
       text-align: center;
     }
-    .controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      margin-bottom: 1rem;
-    }
-    input, button {
-      padding: 0.5rem;
-      font-size: 1rem;
+    #searchInput {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      background: white;
     }
     th, td {
-      border: 1px solid #ccc;
-      padding: 0.5rem;
-      text-align: left;
+      padding: 8px;
+      border: 1px solid #ddd;
+      text-align: center;
     }
     th {
-      background: #eee;
+      background-color: #f2f2f2;
     }
-    .btn {
-      background: #007BFF;
+    input[type="text"] {
+      width: 90%;
+      padding: 4px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      text-align: center;
+    }
+    .button {
+      margin-top: 15px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #4CAF50;
       color: white;
       border: none;
+      border-radius: 8px;
       cursor: pointer;
     }
-    .btn:hover {
-      background: #0056b3;
-    }
-    .btn-reset {
-      background: #dc3545;
-    }
-    .btn-reset:hover {
-      background: #a71d2a;
+    .button:hover {
+      background-color: #45a049;
     }
   </style>
 </head>
 <body>
-  <h1>Catalogo Ordini</h1>
 
-  <div class="controls">
-    <input type="text" id="searchInput" placeholder="Cerca articolo..." />
-    <input type="text" id="clienteInput" placeholder="Nome cliente" />
-    <button class="btn" onclick="generateExcel()">Genera Excel</button>
-    <button class="btn btn-reset" onclick="resetAll()">Azzera campi</button>
-  </div>
+<h1>Catalogo Ordini</h1>
 
-  <table id="catalogoTable">
-    <thead>
-      <tr>
-        <th>Codice</th>
-        <th>Descrizione</th>
-        <th>Categoria</th>
-        <th>Prezzo</th>
-        <th>Quantità</th>
-        <th>P.P.</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+<input type="text" id="searchInput" placeholder="Cerca articoli..." onkeyup="filtraCatalogo()">
 
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script>
-    const catalogoUrl = "https://raw.githubusercontent.com/mosynaa/ordinecil/main/catalogo.csv";
-    let data = [];
+<table id="catalogo">
+  <thead>
+    <tr>
+      <th>Codice</th>
+      <th>Descrizione</th>
+      <th>Quantità</th>
+      <th>Prezzo</th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- Le righe verranno generate dinamicamente -->
+  </tbody>
+</table>
 
-    fetch(catalogoUrl)
-      .then(response => response.text())
-      .then(csvText => {
-        const lines = csvText.trim().split("\n");
-        const headers = lines[0].split(",");
-        data = lines.slice(1).map(line => {
-          const values = line.split(",");
-          return {
-            codice: values[0],
-            descrizione: values[1],
-            categoria: values[2],
-            prezzo: values[3],
-            quantita: "",
-            pp: ""
-          };
-        });
-        displayData(data);
+<button class="button" onclick="generaExcel()">Genera Excel</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+  const csvUrl = 'https://raw.githubusercontent.com/tuo-username/tuo-repo/main/catalogo.csv'; // Inserisci il tuo link corretto!
+
+  fetch(csvUrl)
+    .then(response => response.text())
+    .then(data => {
+      const parsed = Papa.parse(data, { header: true });
+      const tbody = document.querySelector('#catalogo tbody');
+
+      parsed.data.forEach((item, index) => {
+        const row = document.createElement('tr');
+
+        const cellCodice = document.createElement('td');
+        cellCodice.textContent = item.Codice || '';
+        row.appendChild(cellCodice);
+
+        const cellDescrizione = document.createElement('td');
+        cellDescrizione.textContent = item.Descrizione || '';
+        row.appendChild(cellDescrizione);
+
+        const cellQuantita = document.createElement('td');
+        const inputQuantita = document.createElement('input');
+        inputQuantita.type = 'text';
+        inputQuantita.id = `quantita-${index}`;
+        cellQuantita.appendChild(inputQuantita);
+        row.appendChild(cellQuantita);
+
+        const cellPrezzo = document.createElement('td');
+        const inputPrezzo = document.createElement('input');
+        inputPrezzo.type = 'text';
+        inputPrezzo.id = `prezzo-${index}`;
+        cellPrezzo.appendChild(inputPrezzo);
+        row.appendChild(cellPrezzo);
+
+        tbody.appendChild(row);
       });
-
-    function displayData(dataToShow) {
-      const tableBody = document.querySelector("#catalogoTable tbody");
-      tableBody.innerHTML = "";
-      dataToShow.forEach((item, index) => {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>${item.codice}</td>
-          <td>${item.descrizione}</td>
-          <td>${item.categoria}</td>
-          <td>${item.prezzo}</td>
-          <td><input type="number" min="0" placeholder="CT" value="${item.quantita}" onchange="data[${index}].quantita=this.value" /></td>
-          <td><input type="text" placeholder="P.P." value="${item.pp}" onchange="data[${index}].pp=this.value" /></td>
-        `;
-        tableBody.appendChild(row);
-      });
-    }
-
-    document.getElementById("searchInput").addEventListener("input", function() {
-      const search = this.value.toLowerCase();
-      const filtered = data.filter(item =>
-        item.codice.toLowerCase().includes(search) ||
-        item.descrizione.toLowerCase().includes(search) ||
-        item.categoria.toLowerCase().includes(search)
-      );
-      displayData(filtered);
     });
 
-    document.getElementById("clienteInput").addEventListener("input", function() {
-      // opzionale: puoi usare questo campo nel file Excel
+  function filtraCatalogo() {
+    const input = document.getElementById('searchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('#catalogo tbody tr');
+
+    rows.forEach(row => {
+      const codice = row.cells[0].textContent.toLowerCase();
+      const descrizione = row.cells[1].textContent.toLowerCase();
+
+      if (codice.includes(input) || descrizione.includes(input)) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  }
+
+  function generaExcel() {
+    const table = document.getElementById('catalogo');
+    const wb = XLSX.utils.book_new();
+    const ws_data = [['Codice', 'Descrizione', 'Quantità', 'Prezzo']];
+
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach((row, index) => {
+      const codice = row.cells[0].textContent;
+      const descrizione = row.cells[1].textContent;
+      const quantitaInput = document.getElementById(`quantita-${index}`);
+      const prezzoInput = document.getElementById(`prezzo-${index}`);
+
+      let quantitaVal = quantitaInput.value.trim();
+      let prezzoVal = prezzoInput.value.trim();
+
+      if (quantitaVal === '') {
+        quantitaVal = '';
+      } else if (/^\d+$/.test(quantitaVal)) {
+        quantitaVal = 'CT';
+      }
+
+      if (prezzoVal === '') {
+        prezzoVal = 'P.P.';
+      }
+
+      ws_data.push([codice, descrizione, quantitaVal, prezzoVal]);
     });
 
-    function generateExcel() {
-      const cliente = document.getElementById("clienteInput").value || "Cliente";
-      const wb = XLSX.utils.book_new();
-      const wsData = [
-        ["Cliente", cliente],
-        [],
-        ["Codice", "Descrizione", "Categoria", "Prezzo", "Quantità", "P.P."]
-      ];
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    XLSX.utils.book_append_sheet(wb, ws, 'Ordine');
+    XLSX.writeFile(wb, 'ordine.xlsx');
+  }
+</script>
 
-      data.forEach(item => {
-        if (item.quantita || item.pp) {
-          wsData.push([
-            item.codice,
-            item.descrizione,
-            item.categoria,
-            item.prezzo,
-            item.quantita || "CT",
-            item.pp || "P.P."
-          ]);
-        }
-      });
-
-      const ws = XLSX.utils.aoa_to_sheet(wsData);
-      XLSX.utils.book_append_sheet(wb, ws, "Ordine");
-      XLSX.writeFile(wb, `ordine_${cliente}.xlsx`);
-    }
-
-    function resetAll() {
-      document.getElementById("searchInput").value = "";
-      document.getElementById("clienteInput").value = "";
-      data.forEach(item => {
-        item.quantita = "";
-        item.pp = "";
-      });
-      displayData(data);
-    }
-  </script>
 </body>
 </html>
