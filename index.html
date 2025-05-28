@@ -2,15 +2,12 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Catalogo Ordini</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       padding: 20px;
-    }
-    h1 {
-      text-align: center;
     }
     #searchInput {
       width: 100%;
@@ -25,8 +22,8 @@
       border-collapse: collapse;
     }
     th, td {
-      padding: 8px;
       border: 1px solid #ddd;
+      padding: 8px;
       text-align: center;
     }
     th {
@@ -58,7 +55,7 @@
 
 <h1>Catalogo Ordini</h1>
 
-<input type="text" id="searchInput" placeholder="Cerca articoli..." onkeyup="filtraCatalogo()">
+<input type="text" id="searchInput" placeholder="Cerca articoli..." oninput="filtraCatalogo()">
 
 <table id="catalogo">
   <thead>
@@ -70,7 +67,7 @@
     </tr>
   </thead>
   <tbody>
-    <!-- Le righe verranno generate dinamicamente -->
+    <!-- righe generate dinamicamente -->
   </tbody>
 </table>
 
@@ -80,29 +77,31 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
-  const csvUrl = 'https://raw.githubusercontent.com/tuo-username/tuo-repo/main/catalogo.csv'; // Inserisci il tuo link corretto!
+  const csvUrl = 'https://raw.githubusercontent.com/mosynaa/cil/main/catalogo.csv'; // Cambia qui con il link al tuo CSV!
 
+  // Carica e genera la tabella
   fetch(csvUrl)
     .then(response => response.text())
     .then(data => {
       const parsed = Papa.parse(data, { header: true });
       const tbody = document.querySelector('#catalogo tbody');
-
       parsed.data.forEach((item, index) => {
+        if (!item.Codice) return; // Salta righe vuote o incomplete
         const row = document.createElement('tr');
 
         const cellCodice = document.createElement('td');
-        cellCodice.textContent = item.Codice || '';
+        cellCodice.textContent = item.Codice;
         row.appendChild(cellCodice);
 
         const cellDescrizione = document.createElement('td');
-        cellDescrizione.textContent = item.Descrizione || '';
+        cellDescrizione.textContent = item.Descrizione;
         row.appendChild(cellDescrizione);
 
         const cellQuantita = document.createElement('td');
         const inputQuantita = document.createElement('input');
         inputQuantita.type = 'text';
         inputQuantita.id = `quantita-${index}`;
+        inputQuantita.placeholder = '';
         cellQuantita.appendChild(inputQuantita);
         row.appendChild(cellQuantita);
 
@@ -110,6 +109,7 @@
         const inputPrezzo = document.createElement('input');
         inputPrezzo.type = 'text';
         inputPrezzo.id = `prezzo-${index}`;
+        inputPrezzo.placeholder = '';
         cellPrezzo.appendChild(inputPrezzo);
         row.appendChild(cellPrezzo);
 
@@ -117,43 +117,48 @@
       });
     });
 
+  // Funzione di filtro attivata ad ogni input
   function filtraCatalogo() {
-    const input = document.getElementById('searchInput').value.toLowerCase();
-    const rows = document.querySelectorAll('#catalogo tbody tr');
+    const filtro = document.getElementById('searchInput').value.toLowerCase();
+    const righe = document.querySelectorAll('#catalogo tbody tr');
 
-    rows.forEach(row => {
-      const codice = row.cells[0].textContent.toLowerCase();
-      const descrizione = row.cells[1].textContent.toLowerCase();
-
-      if (codice.includes(input) || descrizione.includes(input)) {
-        row.style.display = '';
+    righe.forEach(riga => {
+      const codice = riga.cells[0].textContent.toLowerCase();
+      const descrizione = riga.cells[1].textContent.toLowerCase();
+      if (codice.includes(filtro) || descrizione.includes(filtro)) {
+        riga.style.display = '';
       } else {
-        row.style.display = 'none';
+        riga.style.display = 'none';
       }
     });
   }
 
+  // Genera file Excel con logica quantità/prezzo
   function generaExcel() {
     const table = document.getElementById('catalogo');
     const wb = XLSX.utils.book_new();
     const ws_data = [['Codice', 'Descrizione', 'Quantità', 'Prezzo']];
+    const righe = table.querySelectorAll('tbody tr');
 
-    const rows = table.querySelectorAll('tbody tr');
-    rows.forEach((row, index) => {
-      const codice = row.cells[0].textContent;
-      const descrizione = row.cells[1].textContent;
-      const quantitaInput = document.getElementById(`quantita-${index}`);
-      const prezzoInput = document.getElementById(`prezzo-${index}`);
+    righe.forEach((riga, i) => {
+      if (riga.style.display === 'none') return; // Salta righe nascoste dal filtro
+      const codice = riga.cells[0].textContent;
+      const descrizione = riga.cells[1].textContent;
 
+      const quantitaInput = document.getElementById(`quantita-${i}`);
       let quantitaVal = quantitaInput.value.trim();
+
+      const prezzoInput = document.getElementById(`prezzo-${i}`);
       let prezzoVal = prezzoInput.value.trim();
 
+      // Logica quantità: se c'è solo un numero puro, allora esce "CT", se c'è qualcosa in più (es "3 Pz") lascialo com'è
       if (quantitaVal === '') {
         quantitaVal = '';
       } else if (/^\d+$/.test(quantitaVal)) {
         quantitaVal = 'CT';
       }
 
+      // Logica prezzo: se vuoto esce "P.P."
       if (prezzoVal === '') {
         prezzoVal = 'P.P.';
       }
