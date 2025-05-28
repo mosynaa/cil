@@ -1,235 +1,198 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Catalogo Multimediale</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 15px;
-      background: #f9f9f9;
-      color: #222;
-    }
-    input[type="text"] {
-      padding: 8px;
-      width: 100%;
-      max-width: 400px;
-      margin-bottom: 15px;
-      font-size: 16px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      max-width: 900px;
-      margin-bottom: 20px;
-      background: #fff;
-      box-shadow: 0 0 5px #ddd;
-    }
-    th, td {
-      padding: 10px;
-      border: 1px solid #ddd;
-      text-align: left;
-    }
-    th {
-      background-color: #4285f4;
-      color: white;
-      user-select: none;
-    }
-    input.qty, input.price {
-      width: 80px;
-      padding: 5px;
-      font-size: 14px;
-      border: 1px solid #aaa;
-      border-radius: 3px;
-    }
-    #btnExport {
-      padding: 10px 20px;
-      font-size: 16px;
-      background-color: #4285f4;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    #btnExport:hover {
-      background-color: #2a5bbf;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Catalogo Multimediale</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; }
+  input[type=text] { padding: 6px; width: 300px; margin-bottom: 10px; }
+  table { border-collapse: collapse; width: 100%; max-width: 900px; }
+  th, td { border: 1px solid #ddd; padding: 8px; }
+  th { background-color: #f2f2f2; }
+  input.qty, input.price { width: 80px; }
+  input.client { width: 300px; margin-bottom: 20px; padding: 6px; }
+  button { margin-top: 15px; padding: 10px 20px; font-size: 16px; cursor: pointer; }
+</style>
 </head>
 <body>
 
-  <h1>Catalogo Multimediale</h1>
-  <input type="text" id="searchInput" placeholder="Cerca articolo per codice o descrizione..." />
+<h2>Catalogo Multimediale</h2>
 
-  <table id="catalogo">
-    <thead>
-      <tr>
-        <th>Codice</th>
-        <th>Descrizione</th>
-        <th>Categoria</th>
-        <th>Quantità</th>
-        <th>Prezzo</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+<label>Nome Cliente: <input type="text" id="clientName" class="client" placeholder="Inserisci nome cliente"></label><br>
 
-  <button id="btnExport">Esporta in Excel</button>
+<label>Ricerca articolo: <input type="text" id="searchInput" placeholder="Cerca per codice o descrizione"></label>
 
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script>
-    const csvUrl = 'https://raw.githubusercontent.com/mosynaa/cil/refs/heads/main/catalogo.csv';
+<table id="catalogTable">
+  <thead>
+    <tr>
+      <th>Codice</th>
+      <th>Descrizione</th>
+      <th>Categoria</th>
+      <th>Prezzo</th>
+      <th>Quantità</th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- righe generate dinamicamente -->
+  </tbody>
+</table>
 
-    let catalogoDati = []; // dati parsati dal CSV
-    let filteredDati = []; // dati filtrati per la ricerca
+<button id="exportBtn">Esporta Ordine in Excel</button>
 
-    // Carica CSV e mostra tabella
-    fetch(csvUrl)
-      .then(response => {
-        if (!response.ok) throw new Error('Errore caricamento CSV: ' + response.status);
-        return response.text();
-      })
-      .then(data => {
-        const parsed = Papa.parse(data, { header: true, skipEmptyLines: true });
-        catalogoDati = parsed.data;
-        filteredDati = catalogoDati;
-        popolaTabella(filteredDati);
-      })
-      .catch(err => {
-        alert('Errore caricamento catalogo: ' + err.message);
-        console.error(err);
-      });
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-    // Funzione per creare la tabella
-    function popolaTabella(dati) {
-      const tbody = document.querySelector('#catalogo tbody');
-      tbody.innerHTML = '';
+<script>
+  const csvUrl = 'https://raw.githubusercontent.com/mosynaa/cil/main/catalogo.csv'; 
 
-      dati.forEach((item, index) => {
-        if (!item.Codice || !item.Descrizione) return;
+  let catalogData = []; // dati dal csv
+  let filteredData = []; // dati filtrati in ricerca
+  let qtyMap = new Map();   // per salvare quantità inserite, key = codice articolo
+  let priceMap = new Map(); // per salvare prezzi inseriti, key = codice articolo
 
-        const tr = document.createElement('tr');
+  const clientNameInput = document.getElementById('clientName');
+  const searchInput = document.getElementById('searchInput');
+  const catalogTableBody = document.querySelector('#catalogTable tbody');
+  const exportBtn = document.getElementById('exportBtn');
 
-        tr.innerHTML = `
-          <td>${item.Codice}</td>
-          <td>${item.Descrizione}</td>
-          <td>${item.Categoria || ''}</td>
-          <td><input type="text" class="qty" placeholder="" data-index="${index}" /></td>
-          <td><input type="text" class="price" placeholder="" data-index="${index}" /></td>
-        `;
-
-        tbody.appendChild(tr);
-      });
-
-      // Ripristina eventuali valori inseriti in precedenza
-      aggiornaInputConValori();
+  // Funzione per parse CSV semplice
+  function parseCSV(text) {
+    const lines = text.trim().split('\n');
+    const headers = lines[0].split(',');
+    const data = [];
+    for(let i=1; i<lines.length; i++) {
+      let obj = {};
+      let currentLine = lines[i].split(',');
+      for(let j=0; j<headers.length; j++) {
+        obj[headers[j].trim()] = currentLine[j] ? currentLine[j].trim() : '';
+      }
+      data.push(obj);
     }
+    return data;
+  }
 
-    // Mantieni dati inseriti quando si filtra
-    function aggiornaInputConValori() {
-      document.querySelectorAll('input.qty').forEach(input => {
-        const idx = input.dataset.index;
-        if (filteredDati[idx] && filteredDati[idx].__qtyVal) {
-          input.value = filteredDati[idx].__qtyVal;
-        }
-      });
-      document.querySelectorAll('input.price').forEach(input => {
-        const idx = input.dataset.index;
-        if (filteredDati[idx] && filteredDati[idx].__priceVal) {
-          input.value = filteredDati[idx].__priceVal;
-        }
-      });
-    }
+  // Mostra tabella filtrata e aggiorna i valori salvati
+  function renderTable() {
+    catalogTableBody.innerHTML = '';
 
-    // Evento ricerca
-    document.getElementById('searchInput').addEventListener('input', function() {
-      const filtro = this.value.toLowerCase();
+    filteredData.forEach(item => {
+      const codice = item.codice;
 
-      // Prima di filtrare salva i valori correnti input nel filteredDati
-      document.querySelectorAll('input.qty').forEach(input => {
-        const idx = input.dataset.index;
-        if(filteredDati[idx]) filteredDati[idx].__qtyVal = input.value.trim();
-      });
-      document.querySelectorAll('input.price').forEach(input => {
-        const idx = input.dataset.index;
-        if(filteredDati[idx]) filteredDati[idx].__priceVal = input.value.trim();
-      });
+      // Prendo quantità e prezzo salvati o default vuoto
+      const qtyVal = qtyMap.get(codice) || '';
+      const priceVal = priceMap.get(codice) || '';
 
-      filteredDati = catalogoDati.filter(item => {
-        return (item.Codice && item.Codice.toLowerCase().includes(filtro)) ||
-               (item.Descrizione && item.Descrizione.toLowerCase().includes(filtro));
-      });
+      const row = document.createElement('tr');
 
-      popolaTabella(filteredDati);
+      row.innerHTML = `
+        <td>${codice}</td>
+        <td>${item.descrizione}</td>
+        <td>${item.categoria}</td>
+        <td><input type="text" class="price" data-codice="${codice}" value="${priceVal}" placeholder=""></td>
+        <td><input type="text" class="qty" data-codice="${codice}" value="${qtyVal}" placeholder=""></td>
+      `;
+      catalogTableBody.appendChild(row);
     });
 
-    // Funzione per esportare in Excel
-    document.getElementById('btnExport').addEventListener('click', () => {
-      // Prendo i valori inseriti
-      document.querySelectorAll('input.qty').forEach(input => {
-        const idx = input.dataset.index;
-        if(filteredDati[idx]) filteredDati[idx].__qtyVal = input.value.trim();
-      });
-      document.querySelectorAll('input.price').forEach(input => {
-        const idx = input.dataset.index;
-        if(filteredDati[idx]) filteredDati[idx].__priceVal = input.value.trim();
-      });
-
-      // Costruisco dati per Excel
-      const datiExcel = filteredDati.map(item => {
-        let qta = item.__qtyVal || '';
-        let prezzo = item.__priceVal || '';
-
-        // Per quantità:
-        // se vuoto lascia vuoto
-        // se contiene testo tipo "5 Pz" lascia così
-        // se contiene solo numero, se vuoto il prezzo metto CT
-        // In caso quantità numerica senza testo, metto CT se prezzo vuoto
-        let qtaFinale = '';
-        if (qta === '') {
-          qtaFinale = '';
-        } else if (/\d/.test(qta)) {
-          // se contiene lettere oltre ai numeri, lascio così
-          if (/\D/.test(qta)) {
-            qtaFinale = qta;
-          } else {
-            // solo numeri
-            qtaFinale = qta; // lascio quantità come inserita
-          }
-        } else {
-          qtaFinale = qta; // lascio qualsiasi cosa inserita
-        }
-
-        // Per prezzo:
-        // se vuoto metto P.P.
-        let prezzoFinale = prezzo.trim() === '' ? 'P.P.' : prezzo;
-
-        // Se quantità è inserita ma solo numero e prezzo è vuoto, scrivo CT nel campo quantità
-        if (qta !== '' && !/\D/.test(qta) && prezzoFinale === 'P.P.') {
-          qtaFinale = 'CT';
-        }
-
-        return {
-          Codice: item.Codice,
-          Descrizione: item.Descrizione,
-          Categoria: item.Categoria || '',
-          Quantità: qtaFinale,
-          Prezzo: prezzoFinale
-        };
-      });
-
-      // Uso XLSX per creare file
-      const ws = XLSX.utils.json_to_sheet(datiExcel);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Ordine');
-
-      XLSX.writeFile(wb, 'catalogo-ordine.xlsx');
+    // Aggiungo eventi input per aggiornare mappe quantità e prezzi
+    document.querySelectorAll('input.qty').forEach(input => {
+      input.oninput = (e) => {
+        const cod = e.target.dataset.codice;
+        const val = e.target.value.trim();
+        if(val === '') qtyMap.delete(cod);
+        else qtyMap.set(cod, val);
+      };
     });
 
-  </script>
+    document.querySelectorAll('input.price').forEach(input => {
+      input.oninput = (e) => {
+        const cod = e.target.dataset.codice;
+        const val = e.target.value.trim();
+        if(val === '') priceMap.delete(cod);
+        else priceMap.set(cod, val);
+      };
+    });
+  }
+
+  // Funzione filtro ricerca
+  function filterCatalog() {
+    const term = searchInput.value.toLowerCase();
+    if(term === '') {
+      filteredData = catalogData.slice();
+    } else {
+      filteredData = catalogData.filter(item => 
+        item.codice.toLowerCase().includes(term) ||
+        item.descrizione.toLowerCase().includes(term)
+      );
+    }
+    renderTable();
+  }
+
+  // Funzione per esportare in Excel
+  function exportToExcel() {
+    const clientName = clientNameInput.value.trim();
+    if(clientName === '') {
+      alert('Inserisci il nome cliente!');
+      return;
+    }
+
+    // Creiamo array per Excel: una riga di intestazione + dati
+    const ws_data = [];
+    ws_data.push(['Cliente:', clientName]);
+    ws_data.push(['Codice', 'Descrizione', 'Categoria', 'Prezzo', 'Quantità']);
+
+    filteredData.forEach(item => {
+      const cod = item.codice;
+      const descr = item.descrizione;
+      const cat = item.categoria;
+
+      // Logica prezzo
+      let prezzo = priceMap.get(cod);
+      if(!prezzo || prezzo === '') prezzo = 'P.P.'; // prezzo vuoto = P.P.
+
+      // Logica quantità
+      let qta = qtyMap.get(cod);
+      if(!qta || qta === '') {
+        qta = ''; // vuoto se niente inserito
+      } else {
+        // Se quantità è solo numero puro => "CT"
+        // Se quantità contiene anche testo, esci quello che ha scritto
+        if(/^\d+$/.test(qta)) {
+          qta = 'CT';
+        }
+      }
+
+      ws_data.push([cod, descr, cat, prezzo, qta]);
+    });
+
+    // Creo il workbook e foglio
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+
+    XLSX.utils.book_append_sheet(wb, ws, "Ordine");
+
+    // Esporto
+    XLSX.writeFile(wb, `ordine_${clientName.replace(/\s+/g,'_')}.xlsx`);
+  }
+
+  // Fetch CSV e inizializzo
+  fetch(csvUrl)
+    .then(resp => resp.text())
+    .then(text => {
+      catalogData = parseCSV(text);
+      filteredData = catalogData.slice();
+      renderTable();
+    })
+    .catch(err => {
+      console.error('Errore nel caricamento CSV:', err);
+      alert('Errore nel caricamento del catalogo. Controlla la connessione o il percorso del CSV.');
+    });
+
+  // Eventi
+  searchInput.addEventListener('input', filterCatalog);
+  exportBtn.addEventListener('click', exportToExcel);
+
+</script>
+
 </body>
 </html>
