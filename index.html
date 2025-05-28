@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Gestione Ordini</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -16,29 +16,14 @@
     h1 {
       text-align: center;
       color: #0077b6;
-    }
-    .top-buttons {
-      display: flex;
-      justify-content: space-between;
       margin-bottom: 20px;
-      flex-wrap: wrap;
-      gap: 10px;
     }
-    button {
-      background-color: #0077b6;
-      color: white;
-      border: none;
-      padding: 10px 15px;
-      border-radius: 8px;
-      cursor: pointer;
-      margin: 5px 0;
-      flex-shrink: 0;
+    .client-name, .search-bar, .extra-article, .notes, .top-buttons {
+      margin-bottom: 15px;
     }
-    button:hover {
-      background-color: #023e8a;
-    }
-    .extra-article, .notes, .client-name {
-      margin-bottom: 20px;
+    label {
+      font-weight: 600;
+      margin-right: 10px;
     }
     input[type="text"], textarea {
       padding: 6px 10px;
@@ -47,9 +32,8 @@
       font-size: 16px;
       font-family: 'Poppins', sans-serif;
     }
-    .extra-article input, .client-name input {
-      margin-right: 10px;
-      width: 200px;
+    input[type="text"] {
+      width: 250px;
       max-width: 100%;
     }
     textarea {
@@ -57,6 +41,19 @@
       font-size: 16px;
       font-family: 'Poppins', sans-serif;
       resize: vertical;
+      min-height: 50px;
+    }
+    button {
+      background-color: #0077b6;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 5px 5px 5px 0;
+    }
+    button:hover {
+      background-color: #023e8a;
     }
     table {
       width: 100%;
@@ -76,17 +73,21 @@
       width: 80%;
       padding: 5px;
       font-size: 14px;
+      font-family: 'Poppins', sans-serif;
     }
     @media (max-width: 600px) {
-      table, th, td {
-        font-size: 14px;
-      }
-      .extra-article input, .client-name input {
+      input[type="text"] {
         width: 100%;
         margin-bottom: 8px;
       }
       .top-buttons {
+        display: flex;
         flex-direction: column;
+        gap: 10px;
+      }
+      button {
+        width: 100%;
+        margin: 0 0 10px 0;
       }
     }
   </style>
@@ -95,13 +96,13 @@
   <h1>Gestione Ordini</h1>
 
   <div class="client-name">
-    <label for="clientName" style="font-weight:600;">Nome Cliente: </label>
+    <label for="clientName">Nome Cliente:</label>
     <input type="text" id="clientName" placeholder="Inserisci nome cliente" />
   </div>
 
-  <div class="top-buttons">
-    <button onclick="generateExcel()">Genera Excel</button>
-    <button onclick="resetValues()">Azzera Valori</button>
+  <div class="search-bar">
+    <label for="searchInput">Cerca articolo:</label>
+    <input type="text" id="searchInput" placeholder="Scrivi per filtrare..." oninput="filterTable()" />
   </div>
 
   <div class="extra-article">
@@ -114,7 +115,12 @@
 
   <div class="notes">
     <h3>Note Ordine</h3>
-    <textarea id="noteField" rows="2" placeholder="Scrivi qui le note..."></textarea>
+    <textarea id="noteField" placeholder="Scrivi qui le note..."></textarea>
+  </div>
+
+  <div class="top-buttons">
+    <button onclick="generateExcel()">Genera Excel</button>
+    <button onclick="resetValues()">Azzera Valori</button>
   </div>
 
   <table id="orderTable">
@@ -148,6 +154,7 @@
       tableBody.innerHTML = '';
       data.forEach((item, index) => {
         const row = document.createElement('tr');
+        row.dataset.index = index;
         row.innerHTML = `
           <td>${item.codice || ''}</td>
           <td>${item.descrizione || ''}</td>
@@ -189,6 +196,20 @@
       renderTable();
       document.getElementById('noteField').value = '';
       document.getElementById('clientName').value = '';
+      document.getElementById('searchInput').value = '';
+    }
+
+    function filterTable() {
+      const filter = document.getElementById('searchInput').value.toLowerCase();
+      const tableBody = document.getElementById('tableBody');
+      tableBody.querySelectorAll('tr').forEach(row => {
+        const descr = row.cells[1].textContent.toLowerCase();
+        if (descr.includes(filter)) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
     }
 
     function generateExcel() {
@@ -197,7 +218,6 @@
       const clientName = document.getElementById('clientName').value.trim();
       const note = document.getElementById('noteField').value.trim();
 
-      // Preparo i dati per Excel
       const wsData = [];
 
       // Riga intestazione con nome cliente
@@ -209,7 +229,6 @@
       // Intestazione tabella
       wsData.push(['Codice', 'Descrizione', 'Quantità', 'Prezzo']);
 
-      // Dati tabella
       data.forEach(item => {
         let qty = item.qty || '';
         // Se quantità è solo numero (no lettere), aggiungo "CT"
@@ -220,7 +239,6 @@
         wsData.push([item.codice, item.descrizione, qty, price]);
       });
 
-      // Riga vuota e note
       if (note) {
         wsData.push([]);
         wsData.push(['Note:', note]);
