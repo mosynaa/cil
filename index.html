@@ -3,174 +3,233 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Catalogo Ordini</title>
+  <title>Catalogo Multimediale</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-    #searchInput {
-      width: 100%;
-      padding: 8px;
-      margin-bottom: 10px;
-      font-size: 16px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      text-align: center;
-    }
-    th {
-      background-color: #f2f2f2;
+      margin: 15px;
+      background: #f9f9f9;
+      color: #222;
     }
     input[type="text"] {
-      width: 90%;
-      padding: 4px;
-      border-radius: 6px;
+      padding: 8px;
+      width: 100%;
+      max-width: 400px;
+      margin-bottom: 15px;
+      font-size: 16px;
       border: 1px solid #ccc;
-      text-align: center;
+      border-radius: 4px;
     }
-    .button {
-      margin-top: 15px;
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      max-width: 900px;
+      margin-bottom: 20px;
+      background: #fff;
+      box-shadow: 0 0 5px #ddd;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+    th {
+      background-color: #4285f4;
+      color: white;
+      user-select: none;
+    }
+    input.qty, input.price {
+      width: 80px;
+      padding: 5px;
+      font-size: 14px;
+      border: 1px solid #aaa;
+      border-radius: 3px;
+    }
+    #btnExport {
       padding: 10px 20px;
       font-size: 16px;
-      background-color: #4CAF50;
+      background-color: #4285f4;
       color: white;
       border: none;
-      border-radius: 8px;
+      border-radius: 5px;
       cursor: pointer;
     }
-    .button:hover {
-      background-color: #45a049;
+    #btnExport:hover {
+      background-color: #2a5bbf;
     }
   </style>
 </head>
 <body>
 
-<h1>Catalogo Ordini</h1>
+  <h1>Catalogo Multimediale</h1>
+  <input type="text" id="searchInput" placeholder="Cerca articolo per codice o descrizione..." />
 
-<input type="text" id="searchInput" placeholder="Cerca articoli..." oninput="filtraCatalogo()">
+  <table id="catalogo">
+    <thead>
+      <tr>
+        <th>Codice</th>
+        <th>Descrizione</th>
+        <th>Categoria</th>
+        <th>Quantità</th>
+        <th>Prezzo</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
-<table id="catalogo">
-  <thead>
-    <tr>
-      <th>Codice</th>
-      <th>Descrizione</th>
-      <th>Quantità</th>
-      <th>Prezzo</th>
-    </tr>
-  </thead>
-  <tbody>
-    <!-- righe generate dinamicamente -->
-  </tbody>
-</table>
+  <button id="btnExport">Esporta in Excel</button>
 
-<button class="button" onclick="generaExcel()">Genera Excel</button>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script>
+    const csvUrl = 'https://raw.githubusercontent.com/mosynaa/cil/main/catalogo.csv';
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    let catalogoDati = []; // dati parsati dal CSV
+    let filteredDati = []; // dati filtrati per la ricerca
 
-<script>
-  const csvUrl = 'https://raw.githubusercontent.com/mosynaa/cil/main/catalogo.csv'; // 
-
-  // Carica e genera la tabella
-  fetch(csvUrl)
-    .then(response => response.text())
-    .then(data => {
-      const parsed = Papa.parse(data, { header: true });
-      const tbody = document.querySelector('#catalogo tbody');
-      parsed.data.forEach((item, index) => {
-        if (!item.Codice) return; // Salta righe vuote o incomplete
-        const row = document.createElement('tr');
-
-        const cellCodice = document.createElement('td');
-        cellCodice.textContent = item.Codice;
-        row.appendChild(cellCodice);
-
-        const cellDescrizione = document.createElement('td');
-        cellDescrizione.textContent = item.Descrizione;
-        row.appendChild(cellDescrizione);
-
-        const cellQuantita = document.createElement('td');
-        const inputQuantita = document.createElement('input');
-        inputQuantita.type = 'text';
-        inputQuantita.id = `quantita-${index}`;
-        inputQuantita.placeholder = '';
-        cellQuantita.appendChild(inputQuantita);
-        row.appendChild(cellQuantita);
-
-        const cellPrezzo = document.createElement('td');
-        const inputPrezzo = document.createElement('input');
-        inputPrezzo.type = 'text';
-        inputPrezzo.id = `prezzo-${index}`;
-        inputPrezzo.placeholder = '';
-        cellPrezzo.appendChild(inputPrezzo);
-        row.appendChild(cellPrezzo);
-
-        tbody.appendChild(row);
+    // Carica CSV e mostra tabella
+    fetch(csvUrl)
+      .then(response => {
+        if (!response.ok) throw new Error('Errore caricamento CSV: ' + response.status);
+        return response.text();
+      })
+      .then(data => {
+        const parsed = Papa.parse(data, { header: true, skipEmptyLines: true });
+        catalogoDati = parsed.data;
+        filteredDati = catalogoDati;
+        popolaTabella(filteredDati);
+      })
+      .catch(err => {
+        alert('Errore caricamento catalogo: ' + err.message);
+        console.error(err);
       });
+
+    // Funzione per creare la tabella
+    function popolaTabella(dati) {
+      const tbody = document.querySelector('#catalogo tbody');
+      tbody.innerHTML = '';
+
+      dati.forEach((item, index) => {
+        if (!item.Codice || !item.Descrizione) return;
+
+        const tr = document.createElement('tr');
+
+        tr.innerHTML = `
+          <td>${item.Codice}</td>
+          <td>${item.Descrizione}</td>
+          <td>${item.Categoria || ''}</td>
+          <td><input type="text" class="qty" placeholder="" data-index="${index}" /></td>
+          <td><input type="text" class="price" placeholder="" data-index="${index}" /></td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+
+      // Ripristina eventuali valori inseriti in precedenza
+      aggiornaInputConValori();
+    }
+
+    // Mantieni dati inseriti quando si filtra
+    function aggiornaInputConValori() {
+      document.querySelectorAll('input.qty').forEach(input => {
+        const idx = input.dataset.index;
+        if (filteredDati[idx] && filteredDati[idx].__qtyVal) {
+          input.value = filteredDati[idx].__qtyVal;
+        }
+      });
+      document.querySelectorAll('input.price').forEach(input => {
+        const idx = input.dataset.index;
+        if (filteredDati[idx] && filteredDati[idx].__priceVal) {
+          input.value = filteredDati[idx].__priceVal;
+        }
+      });
+    }
+
+    // Evento ricerca
+    document.getElementById('searchInput').addEventListener('input', function() {
+      const filtro = this.value.toLowerCase();
+
+      // Prima di filtrare salva i valori correnti input nel filteredDati
+      document.querySelectorAll('input.qty').forEach(input => {
+        const idx = input.dataset.index;
+        if(filteredDati[idx]) filteredDati[idx].__qtyVal = input.value.trim();
+      });
+      document.querySelectorAll('input.price').forEach(input => {
+        const idx = input.dataset.index;
+        if(filteredDati[idx]) filteredDati[idx].__priceVal = input.value.trim();
+      });
+
+      filteredDati = catalogoDati.filter(item => {
+        return (item.Codice && item.Codice.toLowerCase().includes(filtro)) ||
+               (item.Descrizione && item.Descrizione.toLowerCase().includes(filtro));
+      });
+
+      popolaTabella(filteredDati);
     });
 
-  // Funzione di filtro attivata ad ogni input
-  function filtraCatalogo() {
-    const filtro = document.getElementById('searchInput').value.toLowerCase();
-    const righe = document.querySelectorAll('#catalogo tbody tr');
+    // Funzione per esportare in Excel
+    document.getElementById('btnExport').addEventListener('click', () => {
+      // Prendo i valori inseriti
+      document.querySelectorAll('input.qty').forEach(input => {
+        const idx = input.dataset.index;
+        if(filteredDati[idx]) filteredDati[idx].__qtyVal = input.value.trim();
+      });
+      document.querySelectorAll('input.price').forEach(input => {
+        const idx = input.dataset.index;
+        if(filteredDati[idx]) filteredDati[idx].__priceVal = input.value.trim();
+      });
 
-    righe.forEach(riga => {
-      const codice = riga.cells[0].textContent.toLowerCase();
-      const descrizione = riga.cells[1].textContent.toLowerCase();
-      if (codice.includes(filtro) || descrizione.includes(filtro)) {
-        riga.style.display = '';
-      } else {
-        riga.style.display = 'none';
-      }
+      // Costruisco dati per Excel
+      const datiExcel = filteredDati.map(item => {
+        let qta = item.__qtyVal || '';
+        let prezzo = item.__priceVal || '';
+
+        // Per quantità:
+        // se vuoto lascia vuoto
+        // se contiene testo tipo "5 Pz" lascia così
+        // se contiene solo numero, se vuoto il prezzo metto CT
+        // In caso quantità numerica senza testo, metto CT se prezzo vuoto
+        let qtaFinale = '';
+        if (qta === '') {
+          qtaFinale = '';
+        } else if (/\d/.test(qta)) {
+          // se contiene lettere oltre ai numeri, lascio così
+          if (/\D/.test(qta)) {
+            qtaFinale = qta;
+          } else {
+            // solo numeri
+            qtaFinale = qta; // lascio quantità come inserita
+          }
+        } else {
+          qtaFinale = qta; // lascio qualsiasi cosa inserita
+        }
+
+        // Per prezzo:
+        // se vuoto metto P.P.
+        let prezzoFinale = prezzo.trim() === '' ? 'P.P.' : prezzo;
+
+        // Se quantità è inserita ma solo numero e prezzo è vuoto, scrivo CT nel campo quantità
+        if (qta !== '' && !/\D/.test(qta) && prezzoFinale === 'P.P.') {
+          qtaFinale = 'CT';
+        }
+
+        return {
+          Codice: item.Codice,
+          Descrizione: item.Descrizione,
+          Categoria: item.Categoria || '',
+          Quantità: qtaFinale,
+          Prezzo: prezzoFinale
+        };
+      });
+
+      // Uso XLSX per creare file
+      const ws = XLSX.utils.json_to_sheet(datiExcel);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Ordine');
+
+      XLSX.writeFile(wb, 'catalogo-ordine.xlsx');
     });
-  }
 
-  // Genera file Excel con logica quantità/prezzo
-  function generaExcel() {
-    const table = document.getElementById('catalogo');
-    const wb = XLSX.utils.book_new();
-    const ws_data = [['Codice', 'Descrizione', 'Quantità', 'Prezzo']];
-    const righe = table.querySelectorAll('tbody tr');
-
-    righe.forEach((riga, i) => {
-      if (riga.style.display === 'none') return; // Salta righe nascoste dal filtro
-      const codice = riga.cells[0].textContent;
-      const descrizione = riga.cells[1].textContent;
-
-      const quantitaInput = document.getElementById(`quantita-${i}`);
-      let quantitaVal = quantitaInput.value.trim();
-
-      const prezzoInput = document.getElementById(`prezzo-${i}`);
-      let prezzoVal = prezzoInput.value.trim();
-
-      // Logica quantità: se c'è solo un numero puro, allora esce "CT", se c'è qualcosa in più (es "3 Pz") lascialo com'è
-      if (quantitaVal === '') {
-        quantitaVal = '';
-      } else if (/^\d+$/.test(quantitaVal)) {
-        quantitaVal = 'CT';
-      }
-
-      // Logica prezzo: se vuoto esce "P.P."
-      if (prezzoVal === '') {
-        prezzoVal = 'P.P.';
-      }
-
-      ws_data.push([codice, descrizione, quantitaVal, prezzoVal]);
-    });
-
-    const ws = XLSX.utils.aoa_to_sheet(ws_data);
-    XLSX.utils.book_append_sheet(wb, ws, 'Ordine');
-    XLSX.writeFile(wb, 'ordine.xlsx');
-  }
-</script>
-
+  </script>
 </body>
 </html>
