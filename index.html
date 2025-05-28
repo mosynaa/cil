@@ -136,13 +136,14 @@
   </table>
 
   <script>
-    let data = [];
+    let catalogData = [];
+    let extraData = [];
 
     async function loadCSV() {
       const response = await fetch('https://raw.githubusercontent.com/mosynaa/ordinecil/main/catalogo.csv');
       const text = await response.text();
       const rows = text.trim().split('\n').slice(1);
-      data = rows.map(row => {
+      catalogData = rows.map(row => {
         const [codice, descrizione, categoria, prezzo] = row.split(',');
         return { codice: codice.trim(), descrizione: descrizione.trim(), prezzo: prezzo?.trim() || '', qty: '' };
       });
@@ -152,25 +153,50 @@
     function renderTable() {
       const tableBody = document.getElementById('tableBody');
       tableBody.innerHTML = '';
-      data.forEach((item, index) => {
+
+      // Prima articoli extra
+      extraData.forEach((item, index) => {
         const row = document.createElement('tr');
-        row.dataset.index = index;
+        row.dataset.extraIndex = index;
         row.innerHTML = `
           <td>${item.codice || ''}</td>
           <td>${item.descrizione || ''}</td>
-          <td><input type="text" value="${item.qty}" onchange="updateQty(${index}, this.value)" placeholder="Quantità"></td>
-          <td><input type="text" value="${item.prezzo}" onchange="updatePrice(${index}, this.value)" placeholder="Prezzo"></td>
+          <td><input type="text" value="${item.qty}" onchange="updateExtraQty(${index}, this.value)" placeholder="Quantità"></td>
+          <td><input type="text" value="${item.prezzo}" onchange="updateExtraPrice(${index}, this.value)" placeholder="Prezzo"></td>
         `;
         tableBody.appendChild(row);
       });
+
+      // Poi articoli catalogo
+      catalogData.forEach((item, index) => {
+        const row = document.createElement('tr');
+        row.dataset.catalogIndex = index;
+        row.innerHTML = `
+          <td>${item.codice || ''}</td>
+          <td>${item.descrizione || ''}</td>
+          <td><input type="text" value="${item.qty}" onchange="updateCatalogQty(${index}, this.value)" placeholder="Quantità"></td>
+          <td><input type="text" value="${item.prezzo}" onchange="updateCatalogPrice(${index}, this.value)" placeholder="Prezzo"></td>
+        `;
+        tableBody.appendChild(row);
+      });
+
+      filterTable(); // per aggiornare subito la visibilità in base a eventuale filtro attivo
     }
 
-    function updateQty(index, value) {
-      data[index].qty = value;
+    // Aggiornamento dati articoli extra
+    function updateExtraQty(index, value) {
+      extraData[index].qty = value;
+    }
+    function updateExtraPrice(index, value) {
+      extraData[index].prezzo = value;
     }
 
-    function updatePrice(index, value) {
-      data[index].prezzo = value;
+    // Aggiornamento dati catalogo
+    function updateCatalogQty(index, value) {
+      catalogData[index].qty = value;
+    }
+    function updateCatalogPrice(index, value) {
+      catalogData[index].prezzo = value;
     }
 
     function addExtraArticle() {
@@ -181,7 +207,7 @@
         alert('Inserisci una descrizione per l\'articolo extra');
         return;
       }
-      data.push({ codice: '', descrizione: desc, qty: qty, prezzo: price });
+      extraData.unshift({ codice: '', descrizione: desc, qty: qty, prezzo: price }); // aggiungo in cima con unshift
       renderTable();
       document.getElementById('extraDesc').value = '';
       document.getElementById('extraQty').value = '';
@@ -189,10 +215,11 @@
     }
 
     function resetValues() {
-      data.forEach(item => {
+      catalogData.forEach(item => {
         item.qty = '';
         item.prezzo = '';
       });
+      extraData = [];
       renderTable();
       document.getElementById('noteField').value = '';
       document.getElementById('clientName').value = '';
@@ -229,9 +256,19 @@
       // Intestazione tabella
       wsData.push(['Codice', 'Descrizione', 'Quantità', 'Prezzo']);
 
-      data.forEach(item => {
+      // Prima gli extra
+      extraData.forEach(item => {
         let qty = item.qty || '';
-        // Se quantità è solo numero (no lettere), aggiungo "CT"
+        if (qty && /^[0-9]+$/.test(qty)) {
+          qty += ' CT';
+        }
+        const price = item.prezzo ? item.prezzo : 'P.P.';
+        wsData.push([item.codice, item.descrizione, qty, price]);
+      });
+
+      // Poi catalogo
+      catalogData.forEach(item => {
+        let qty = item.qty || '';
         if (qty && /^[0-9]+$/.test(qty)) {
           qty += ' CT';
         }
@@ -246,7 +283,7 @@
 
       const ws = XLSX.utils.aoa_to_sheet(wsData);
       XLSX.utils.book_append_sheet(wb, ws, 'Ordine');
-      XLSX.writeFile(wb, 'ordine.xlsx');
+      XLSX.writeFile(wb, `Ordine_${clientName || 'SenzaNome'}.xlsx`);
     }
 
     loadCSV();
