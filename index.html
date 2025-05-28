@@ -2,108 +2,203 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Catalogo Ordini</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Catalogo Multimediale</title>
   <style>
-    body { font-family: sans-serif; margin: 20px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    input { width: 80px; }
-    select { margin-bottom: 10px; }
-    button { margin-top: 10px; }
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    input[type=text], select { padding: 6px; margin-bottom: 10px; }
+    table { border-collapse: collapse; width: 100%; max-width: 900px; }
+    th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background-color: #f2f2f2; }
+    input.qty, input.price { width: 80px; }
+    input.client { width: 300px; margin-bottom: 20px; padding: 6px; }
+    button { margin-top: 15px; padding: 10px 20px; font-size: 16px; cursor: pointer; }
   </style>
 </head>
 <body>
-  <h1>Catalogo Ordini</h1>
-  <label for="categoriaSelect">Filtra per Categoria:</label>
-  <select id="categoriaSelect">
-    <option value="">Tutte</option>
-  </select>
-  <table id="catalogo">
+
+  <h2>Catalogo Multimediale</h2>
+
+  <label>Nome Cliente: <input type="text" id="clientName" class="client" placeholder="Inserisci nome cliente"></label><br>
+
+  <label>Ricerca articolo: <input type="text" id="searchInput" placeholder="Cerca per codice o descrizione"></label>
+
+  <table id="catalogTable">
     <thead>
       <tr>
-        <th>Codice</th>
-        <th>Descrizione</th>
         <th>Quantità</th>
         <th>Prezzo</th>
+        <th>Categoria</th>
+        <th>Codice</th>
+        <th>Descrizione</th>
       </tr>
     </thead>
-    <tbody></tbody>
+    <tbody>
+      <!-- righe generate dinamicamente -->
+    </tbody>
   </table>
-  <button onclick="generaExcel()">Scarica Excel</button>
+
+  <button id="exportBtn">Esporta Ordine in Excel</button>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
   <script>
     const csvUrl = 'https://raw.githubusercontent.com/mosynaa/cil/main/catalogo.csv';
-    let catalogoDati = [];
 
-    // Carica il CSV
-    fetch(csvUrl)
-      .then(res => res.text())
-      .then(csv => {
-        const righe = csv.trim().split('\n').map(r => r.split(','));
-        const intestazioni = righe.shift();
-        const catIndex = intestazioni.indexOf('categoria');
-        const codiceIndex = intestazioni.indexOf('codice');
-        const descrIndex = intestazioni.indexOf('descrizione');
-        const prezzoIndex = intestazioni.indexOf('prezzo');
+    let catalogData = [];
+    let filteredData = [];
+    let qtyMap = new Map();
+    let priceMap = new Map();
+    let categoryMap = new Map();
+    let categories = new Set();
 
-        // Prepara dati
-        catalogoDati = righe.map(r => ({
-          codice: r[codiceIndex],
-          descrizione: r[descrIndex],
-          categoria: r[catIndex],
-          prezzo: r[prezzoIndex],
-          quantita: ''
-        }));
+    const clientNameInput = document.getElementById('clientName');
+    const searchInput = document.getElementById('searchInput');
+    const catalogTableBody = document.querySelector('#catalogTable tbody');
+    const exportBtn = document.getElementById('exportBtn');
 
-        popolaCategorie();
-        filtraCategoria();
-      });
-
-    function popolaCategorie() {
-      const select = document.getElementById('categoriaSelect');
-      const categorie = [...new Set(catalogoDati.map(d => d.categoria))];
-      categorie.forEach(cat => {
-        const opt = document.createElement('option');
-        opt.value = cat;
-        opt.textContent = cat;
-        select.appendChild(opt);
-      });
-      select.addEventListener('change', filtraCategoria);
+    function parseCSV(text) {
+      const lines = text.trim().split('\n');
+      const headers = lines[0].split(',');
+      const data = [];
+      for(let i=1; i<lines.length; i++) {
+        let obj = {};
+        let currentLine = lines[i].split(',');
+        for(let j=0; j<headers.length; j++) {
+          obj[headers[j].trim()] = currentLine[j] ? currentLine[j].trim() : '';
+        }
+        data.push(obj);
+      }
+      return data;
     }
 
-    function filtraCategoria() {
-      const catSelezionata = document.getElementById('categoriaSelect').value;
-      const tbody = document.querySelector('#catalogo tbody');
-      tbody.innerHTML = '';
+    function renderTable() {
+      catalogTableBody.innerHTML = '';
 
-      const datiFiltrati = catSelezionata ? catalogoDati.filter(d => d.categoria === catSelezionata) : catalogoDati;
+      filteredData.forEach(item => {
+        const codice = item.codice;
+        const descrizione = item.descrizione;
+        const categoria = item.categoria;
 
-      datiFiltrati.forEach((item, i) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${item.codice}</td>
-          <td>${item.descrizione}</td>
-          <td><input type="text" placeholder="CT" onchange="catalogoDati[${i}].quantita=this.value" /></td>
-          <td><input type="text" placeholder="P.P." value="${item.prezzo}" onchange="catalogoDati[${i}].prezzo=this.value" /></td>
+        categories.add(categoria);
+
+        const qtyVal = qtyMap.get(codice) || '';
+        const priceVal = priceMap.get(codice) || '';
+        const selectedCategory = categoryMap.get(codice) || categoria;
+
+        const row = document.createElement('tr');
+
+        const categoryOptions = Array.from(categories).map(cat => {
+          return `<option value="${cat}" ${cat === selectedCategory ? 'selected' : ''}>${cat}</option>`;
+        }).join('');
+
+        row.innerHTML = `
+          <td><input type="text" class="qty" data-codice="${codice}" value="${qtyVal}" placeholder=""></td>
+          <td><input type="text" class="price" data-codice="${codice}" value="${priceVal}" placeholder=""></td>
+          <td>
+            <select class="category" data-codice="${codice}">
+              ${categoryOptions}
+            </select>
+          </td>
+          <td>${codice}</td>
+          <td>${descrizione}</td>
         `;
-        tbody.appendChild(tr);
+        catalogTableBody.appendChild(row);
+      });
+
+      document.querySelectorAll('input.qty').forEach(input => {
+        input.oninput = (e) => {
+          const cod = e.target.dataset.codice;
+          const val = e.target.value.trim();
+          if(val === '') qtyMap.delete(cod);
+          else qtyMap.set(cod, val);
+        };
+      });
+
+      document.querySelectorAll('input.price').forEach(input => {
+        input.oninput = (e) => {
+          const cod = e.target.dataset.codice;
+          const val = e.target.value.trim();
+          if(val === '') priceMap.delete(cod);
+          else priceMap.set(cod, val);
+        };
+      });
+
+      document.querySelectorAll('select.category').forEach(select => {
+        select.onchange = (e) => {
+          const cod = e.target.dataset.codice;
+          const val = e.target.value;
+          categoryMap.set(cod, val);
+        };
       });
     }
 
-    function generaExcel() {
-      const dati = [['Codice', 'Descrizione', 'Quantità', 'Prezzo']];
-      catalogoDati.forEach(d => {
-        let qta = d.quantita.trim() === '' ? 'CT' : d.quantita;
-        let prezzo = d.prezzo.trim() === '' ? 'P.P.' : d.prezzo;
-        dati.push([d.codice, d.descrizione, qta, prezzo]);
-      });
-      const ws = XLSX.utils.aoa_to_sheet(dati);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Ordine');
-      XLSX.writeFile(wb, 'ordine.xlsx');
+    function filterCatalog() {
+      const term = searchInput.value.toLowerCase();
+      if(term === '') {
+        filteredData = catalogData.slice();
+      } else {
+        filteredData = catalogData.filter(item =>
+          item.codice.toLowerCase().includes(term) ||
+          item.descrizione.toLowerCase().includes(term)
+        );
+      }
+      renderTable();
     }
+
+    function exportToExcel() {
+      const clientName = clientNameInput.value.trim();
+      if(clientName === '') {
+        alert('Inserisci il nome cliente!');
+        return;
+      }
+
+      const ws_data = [];
+      ws_data.push(['Cliente:', clientName]);
+      ws_data.push(['Quantità', 'Prezzo', 'Codice', 'Descrizione']);
+
+      filteredData.forEach(item => {
+        const cod = item.codice;
+        const descr = item.descrizione;
+
+        let prezzo = priceMap.get(cod);
+        if(!prezzo || prezzo === '') prezzo = 'P.P.';
+
+        let qta = qtyMap.get(cod);
+        if(!qta || qta === '') {
+          qta = '';
+        } else {
+          if(/^\d+$/.test(qta)) {
+            qta = 'CT';
+          }
+        }
+
+        ws_data.push([qta, prezzo, cod, descr]);
+      });
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(ws_data);
+
+      XLSX.utils.book_append_sheet(wb, ws, "Ordine");
+
+      XLSX.writeFile(wb, `ordine_${clientName.replace(/\s+/g,'_')}.xlsx`);
+    }
+
+    fetch(csvUrl)
+      .then(resp => resp.text())
+      .then(text => {
+        catalogData = parseCSV(text);
+        filteredData = catalogData.slice();
+        renderTable();
+      })
+      .catch(err => {
+        console.error('Errore nel caricamento CSV:', err);
+        alert('Errore nel caricamento del catalogo. Controlla la connessione o il percorso del CSV.');
+      });
+
+    searchInput.addEventListener('input', filterCatalog);
+    exportBtn.addEventListener('click', exportToExcel);
   </script>
+
 </body>
 </html>
