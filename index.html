@@ -12,122 +12,82 @@
       background-color: #f5f7fa;
       color: #333;
       padding: 20px;
-      margin: 0;
     }
     h1 {
       text-align: center;
       color: #0077b6;
-      margin-bottom: 15px;
-      font-weight: 600;
-      font-size: 1.8rem;
+      margin-bottom: 20px;
     }
     .client-name, .search-bar, .extra-article, .notes, .top-buttons {
       margin-bottom: 15px;
-      max-width: 600px;
-      margin-left: auto;
-      margin-right: auto;
     }
     label {
       font-weight: 600;
-      margin-right: 8px;
-      display: inline-block;
-      margin-bottom: 5px;
-      font-size: 1rem;
+      margin-right: 10px;
     }
     input[type="text"], textarea {
-      padding: 8px 10px;
-      border-radius: 6px;
+      padding: 6px 10px;
+      border-radius: 5px;
       border: 1px solid #ccc;
-      font-size: 1rem;
+      font-size: 16px;
       font-family: 'Poppins', sans-serif;
-      box-sizing: border-box;
-      width: 100%;
-      transition: border-color 0.3s ease;
     }
-    input[type="text"]:focus, textarea:focus {
-      border-color: #0077b6;
-      outline: none;
+    input[type="text"] {
+      width: 250px;
+      max-width: 100%;
     }
     textarea {
+      width: 100%;
+      font-size: 16px;
+      font-family: 'Poppins', sans-serif;
       resize: vertical;
-      min-height: 70px;
+      min-height: 50px;
     }
     button {
       background-color: #0077b6;
       color: white;
       border: none;
-      padding: 12px 18px;
+      padding: 10px 15px;
       border-radius: 8px;
       cursor: pointer;
-      font-weight: 600;
-      font-size: 1rem;
-      transition: background-color 0.3s ease;
-      margin-right: 10px;
+      margin: 5px 5px 5px 0;
     }
-    button:hover, button:focus {
+    button:hover {
       background-color: #023e8a;
-      outline: none;
     }
     table {
       width: 100%;
       border-collapse: collapse;
       background-color: white;
-      max-width: 600px;
-      margin: 0 auto 30px auto;
-      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
-      border-radius: 8px;
-      overflow: hidden;
     }
-    thead {
+    th, td {
+      padding: 10px;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+    th {
       background-color: #ff8500;
       color: white;
     }
-    th, td {
-      padding: 12px 10px;
-      text-align: left;
-      border-bottom: 1px solid #ddd;
-      word-wrap: break-word;
-      font-size: 0.95rem;
-    }
     td input {
-      width: 90%;
-      padding: 6px 8px;
-      font-size: 0.95rem;
+      width: 80%;
+      padding: 5px;
+      font-size: 14px;
       font-family: 'Poppins', sans-serif;
-      border-radius: 5px;
-      border: 1px solid #ccc;
-      box-sizing: border-box;
     }
-    td input:focus {
-      border-color: #0077b6;
-      outline: none;
-    }
-    .extra-article input[type="text"] {
-      width: calc(33.33% - 10px);
-      margin-right: 10px;
-      display: inline-block;
-    }
-    .extra-article input[type="text"]:last-child {
-      margin-right: 0;
-    }
-    .top-buttons {
-      text-align: center;
-      max-width: 600px;
-      margin: 0 auto 20px auto;
-    }
-    /* Responsive semplicissimo */
     @media (max-width: 600px) {
-      .extra-article input[type="text"] {
+      input[type="text"] {
         width: 100%;
         margin-bottom: 8px;
       }
+      .top-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
       button {
         width: 100%;
-        margin-bottom: 12px;
-        margin-right: 0;
-      }
-      table {
-        max-width: 100%;
+        margin: 0 0 10px 0;
       }
     }
   </style>
@@ -163,7 +123,7 @@
     <button onclick="resetValues()">Azzera Valori</button>
   </div>
 
-  <table id="orderTable" aria-label="Tabella ordini">
+  <table id="orderTable">
     <thead>
       <tr>
         <th>Codice</th>
@@ -194,6 +154,7 @@
       const tableBody = document.getElementById('tableBody');
       tableBody.innerHTML = '';
 
+      // Prima articoli extra
       extraData.forEach((item, index) => {
         const row = document.createElement('tr');
         row.dataset.extraIndex = index;
@@ -206,6 +167,7 @@
         tableBody.appendChild(row);
       });
 
+      // Poi articoli catalogo
       catalogData.forEach((item, index) => {
         const row = document.createElement('tr');
         row.dataset.catalogIndex = index;
@@ -217,38 +179,39 @@
         `;
         tableBody.appendChild(row);
       });
+
+      filterTable(); // per aggiornare subito la visibilità in base a eventuale filtro attivo
     }
 
-    function updateExtraQty(i, val) {
-      extraData[i].qty = val;
+    // Aggiornamento dati articoli extra
+    function updateExtraQty(index, value) {
+      extraData[index].qty = value;
     }
-    function updateExtraPrice(i, val) {
-      extraData[i].prezzo = val;
+    function updateExtraPrice(index, value) {
+      extraData[index].prezzo = value;
     }
-    function updateCatalogQty(i, val) {
-      catalogData[i].qty = val;
+
+    // Aggiornamento dati catalogo
+    function updateCatalogQty(index, value) {
+      catalogData[index].qty = value;
     }
-    function updateCatalogPrice(i, val) {
-      catalogData[i].prezzo = val;
+    function updateCatalogPrice(index, value) {
+      catalogData[index].prezzo = value;
     }
 
     function addExtraArticle() {
       const desc = document.getElementById('extraDesc').value.trim();
       const qty = document.getElementById('extraQty').value.trim();
       const price = document.getElementById('extraPrice').value.trim();
-
       if (!desc) {
-        alert('Descrizione articolo extra è obbligatoria.');
+        alert('Inserisci una descrizione per l\'articolo extra');
         return;
       }
-
-      extraData.unshift({ codice: '', descrizione: desc, qty: qty, prezzo: price });
-
+      extraData.unshift({ codice: '', descrizione: desc, qty: qty, prezzo: price }); // aggiungo in cima con unshift
+      renderTable();
       document.getElementById('extraDesc').value = '';
       document.getElementById('extraQty').value = '';
       document.getElementById('extraPrice').value = '';
-
-      renderTable();
     }
 
     function resetValues() {
@@ -257,64 +220,83 @@
         item.prezzo = '';
       });
       extraData = [];
+      renderTable();
       document.getElementById('noteField').value = '';
       document.getElementById('clientName').value = '';
       document.getElementById('searchInput').value = '';
-      renderTable();
     }
 
     function filterTable() {
       const filter = document.getElementById('searchInput').value.toLowerCase();
-      const rows = document.querySelectorAll('#tableBody tr');
-      rows.forEach(row => {
-        const desc = row.cells[1].textContent.toLowerCase();
-        row.style.display = desc.includes(filter) ? '' : 'none';
+      const tableBody = document.getElementById('tableBody');
+      tableBody.querySelectorAll('tr').forEach(row => {
+        const descr = row.cells[1].textContent.toLowerCase();
+        if (descr.includes(filter)) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
       });
     }
 
     function generateExcel() {
-      const clientName = document.getElementById('clientName').value.trim();
-      const noteText = document.getElementById('noteField').value.trim();
-
       const wb = XLSX.utils.book_new();
-      const wsData = [
-        ['Cliente:', clientName],
-        ['Note:', noteText],
-        [],
-        ['Codice', 'Descrizione', 'Qtà', 'Prezzo']
-      ];
 
-      function formatQty(qty) {
-        if (!qty) return '';
-        if (/^\d+$/.test(qty)) return qty + ' CT';
-        return qty;
-      }
-      function formatPrice(price) {
-        return price ? price : 'P.P.';
-      }
+      const clientName = document.getElementById('clientName').value.trim();
+      const note = document.getElementById('noteField').value.trim();
 
+      const wsData = [];
+
+      // Riga intestazione con nome cliente
+      wsData.push(['Nome Cliente:', clientName]);
+
+      // Riga vuota
+      wsData.push([]);
+
+      // Intestazione tabella
+      wsData.push(['Codice', 'Descrizione', 'Qtà', 'Prezzo']);
+
+      // Dati extra in cima
       extraData.forEach(item => {
-        wsData.push([
-          item.codice || '',
-          item.descrizione || '',
-          formatQty(item.qty),
-          formatPrice(item.prezzo)
-        ]);
+        const q = item.qty.trim() === '' ? 'CT' : item.qty.trim();
+        const p = item.prezzo.trim() === '' ? 'P.P.' : item.prezzo.trim();
+        wsData.push([item.codice || '', item.descrizione || '', q, p]);
       });
+
+      // Dati catalogo filtrati e con quantità > 0 o prezzo modificato
       catalogData.forEach(item => {
-        wsData.push([
-          item.codice || '',
-          item.descrizione || '',
-          formatQty(item.qty),
-          formatPrice(item.prezzo)
-        ]);
+        const q = item.qty.trim() === '' ? 'CT' : item.qty.trim();
+        const p = item.prezzo.trim() === '' ? 'P.P.' : item.prezzo.trim();
+        // Aggiungo solo se quantità o prezzo specificati (non vuoti o diversi da CT / P.P.)
+        if (q !== 'CT' || p !== 'P.P.') {
+          wsData.push([item.codice || '', item.descrizione || '', q, p]);
+        }
       });
+
+      // Riga vuota
+      wsData.push([]);
+
+      // Note ordine
+      wsData.push(['Note:']);
+      wsData.push([note]);
 
       const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+      // Aggiungo qualche stile base (es. larghezza colonne)
+      const wscols = [
+        { wch: 15 }, // Codice
+        { wch: 40 }, // Descrizione
+        { wch: 6 },  // Qtà
+        { wch: 10 }  // Prezzo
+      ];
+      ws['!cols'] = wscols;
+
       XLSX.utils.book_append_sheet(wb, ws, 'Ordine');
-      XLSX.writeFile(wb, `Ordine_${clientName || 'SenzaNome'}.xlsx`);
+
+      XLSX.writeFile(wb, 'Ordine_' + (clientName || 'SenzaNome') + '.xlsx');
     }
 
+    // Avvio caricamento CSV e tabella
     loadCSV();
   </script>
 </body>
