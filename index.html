@@ -21,20 +21,39 @@
       margin-bottom: 20px;
     }
 
+    #controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
     #search, #cliente {
-      width: 100%;
-      max-width: 400px;
       padding: 10px;
-      margin: 10px auto;
       border: 1px solid #ccc;
       border-radius: 6px;
-      display: block;
+      flex: 1 1 200px;
+    }
+
+    button {
+      background-color: #f57c00;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    button:hover {
+      background-color: #e65100;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 20px;
+      margin-top: 10px;
       background: white;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
@@ -55,36 +74,17 @@
       background-color: #f2f2f2;
     }
 
-    input[type="number"] {
-      width: 70px;
+    input[type="text"], input[type="number"] {
+      width: 100%;
       padding: 5px;
       border: 1px solid #ccc;
       border-radius: 4px;
-    }
-
-    button {
-      background-color: #f57c00;
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      font-size: 16px;
-      cursor: pointer;
-      border-radius: 6px;
-      display: block;
-      margin: 20px auto;
-    }
-
-    button:hover {
-      background-color: #e65100;
+      box-sizing: border-box;
     }
 
     @media (max-width: 600px) {
       th, td {
         font-size: 14px;
-      }
-
-      input[type="number"] {
-        width: 60px;
       }
     }
   </style>
@@ -92,24 +92,24 @@
 <body>
   <h1>Catalogo Ordini</h1>
 
-  <input type="text" id="search" placeholder="Cerca un articolo...">
-  <input type="text" id="cliente" placeholder="Nome cliente">
+  <div id="controls">
+    <button onclick="generaExcel()">Genera Excel</button>
+    <button onclick="azzeraValori()">Azzera Valori</button>
+    <input type="text" id="search" placeholder="Cerca un articolo...">
+    <input type="text" id="cliente" placeholder="Nome cliente">
+  </div>
 
   <table id="catalogo">
     <thead>
       <tr>
         <th>Codice</th>
         <th>Descrizione</th>
-        <th>Categoria</th>
-        <th>Prezzo</th>
         <th>Quantità</th>
-        <th>P.P.</th>
+        <th>Prezzo</th>
       </tr>
     </thead>
     <tbody></tbody>
   </table>
-
-  <button onclick="generaExcel()">Genera Excel</button>
 
   <script>
     let articoli = [];
@@ -126,7 +126,7 @@
         .then(text => {
           articoli = text.trim().split('\n').slice(1).map(riga => {
             let [codice, descrizione, categoria, prezzo] = riga.split(',');
-            return { codice, descrizione, categoria, prezzo };
+            return { codice, descrizione, prezzo };
           });
           mostraArticoli();
         });
@@ -140,35 +140,50 @@
       articoli.forEach(articolo => {
         if (
           articolo.codice.toLowerCase().includes(filtro) ||
-          articolo.descrizione.toLowerCase().includes(filtro) ||
-          articolo.categoria.toLowerCase().includes(filtro)
+          articolo.descrizione.toLowerCase().includes(filtro)
         ) {
           let tr = document.createElement('tr');
 
           tr.innerHTML = `
             <td>${articolo.codice}</td>
             <td>${articolo.descrizione}</td>
-            <td>${articolo.categoria}</td>
-            <td>${articolo.prezzo}</td>
-            <td><input type="number" min="0" placeholder="CT" value="${quantita[articolo.codice] || ''}" onchange="quantita['${articolo.codice}']=this.value"></td>
-            <td><input type="number" min="0" step="0.01" placeholder="P.P." value="${prezzi[articolo.codice] || ''}" onchange="prezzi['${articolo.codice}']=this.value"></td>
+            <td><input type="text" placeholder="Quantità" value="${quantita[articolo.codice] || ''}" onchange="quantita['${articolo.codice}']=this.value"></td>
+            <td><input type="number" min="0" step="0.01" placeholder="Prezzo" value="${prezzi[articolo.codice] || ''}" onchange="prezzi['${articolo.codice}']=this.value"></td>
           `;
           tbody.appendChild(tr);
         }
       });
     }
 
+    function azzeraValori() {
+      quantita = {};
+      prezzi = {};
+      mostraArticoli();
+    }
+
     function generaExcel() {
-      let dati = [['Cliente', cliente], [], ['Codice', 'Descrizione', 'Categoria', 'Prezzo', 'Quantità', 'P.P.']];
+      let dati = [['Cliente', cliente], [], ['Codice', 'Descrizione', 'Quantità', 'Prezzo']];
       articoli.forEach(a => {
-        if (quantita[a.codice] || prezzi[a.codice]) {
+        let qta = quantita[a.codice];
+        let prezzo = prezzi[a.codice];
+
+        if (qta || prezzo) {
+          let qtaExcel = '';
+          if (qta) {
+            if (/^\d+$/.test(qta.trim())) {
+              qtaExcel = qta.trim() + ' CT';
+            } else {
+              qtaExcel = qta.trim();
+            }
+          }
+
+          let prezzoExcel = prezzo ? prezzo : 'P.P.';
+
           dati.push([
             a.codice,
             a.descrizione,
-            a.categoria,
-            a.prezzo,
-            quantita[a.codice] || '',
-            prezzi[a.codice] || 'P.P.'
+            qtaExcel,
+            prezzoExcel
           ]);
         }
       });
