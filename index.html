@@ -11,7 +11,7 @@
       font-family: 'Poppins', sans-serif;
       background-color: #f5f7fa;
       color: #333;
-      padding: 15px 10px;
+      padding: 20px;
       margin: 0;
     }
     h1 {
@@ -62,8 +62,7 @@
       font-weight: 600;
       font-size: 1rem;
       transition: background-color 0.3s ease;
-      margin: 5px 8px 5px 0;
-      flex-shrink: 0;
+      margin-right: 10px;
     }
     button:hover, button:focus {
       background-color: #023e8a;
@@ -73,25 +72,15 @@
       width: 100%;
       border-collapse: collapse;
       background-color: white;
-      max-width: 100%;
+      max-width: 600px;
       margin: 0 auto 30px auto;
       box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
       border-radius: 8px;
       overflow: hidden;
-      display: block;
     }
     thead {
       background-color: #ff8500;
       color: white;
-      display: table;
-      width: 100%;
-      table-layout: fixed;
-    }
-    tbody {
-      display: block;
-      max-height: 350px;
-      overflow-y: auto;
-      width: 100%;
     }
     th, td {
       padding: 12px 10px;
@@ -99,7 +88,6 @@
       border-bottom: 1px solid #ddd;
       word-wrap: break-word;
       font-size: 0.95rem;
-      display: table-cell;
     }
     td input {
       width: 90%;
@@ -114,52 +102,32 @@
       border-color: #0077b6;
       outline: none;
     }
-    /* Contenitore flessibile per inputs extra articolo */
     .extra-article input[type="text"] {
-      width: calc(33.333% - 10px);
+      width: calc(33.33% - 10px);
       margin-right: 10px;
       display: inline-block;
     }
     .extra-article input[type="text"]:last-child {
       margin-right: 0;
     }
-    /* Pulsanti sopra tabella */
     .top-buttons {
-      display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
+      text-align: center;
       max-width: 600px;
-      margin-left: auto;
-      margin-right: auto;
+      margin: 0 auto 20px auto;
     }
-
-    /* Responsive */
-    @media (max-width: 700px) {
+    /* Responsive semplicissimo */
+    @media (max-width: 600px) {
       .extra-article input[type="text"] {
         width: 100%;
         margin-bottom: 8px;
       }
-      .top-buttons {
-        flex-direction: column;
-      }
       button {
         width: 100%;
-        margin: 0 0 12px 0;
+        margin-bottom: 12px;
+        margin-right: 0;
       }
       table {
-        display: block;
         max-width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-      }
-      thead, tbody, tr, th, td {
-        display: table;
-        width: auto;
-        max-width: none;
-      }
-      tbody {
-        max-height: none;
-        overflow: visible;
       }
     }
   </style>
@@ -180,7 +148,7 @@
   <div class="extra-article">
     <h3>Aggiungi Articolo Extra</h3>
     <input type="text" id="extraDesc" placeholder="Descrizione" />
-    <input type="text" id="extraQty" placeholder="Quantità" />
+    <input type="text" id="extraQty" placeholder="Qtà" />
     <input type="text" id="extraPrice" placeholder="Prezzo" />
     <button onclick="addExtraArticle()">Aggiungi</button>
   </div>
@@ -200,11 +168,11 @@
       <tr>
         <th>Codice</th>
         <th>Descrizione</th>
-        <th>Quantità</th>
+        <th>Qtà</th>
         <th>Prezzo</th>
       </tr>
     </thead>
-    <tbody id="tableBody" tabindex="0"></tbody>
+    <tbody id="tableBody"></tbody>
   </table>
 
   <script>
@@ -226,27 +194,25 @@
       const tableBody = document.getElementById('tableBody');
       tableBody.innerHTML = '';
 
-      // Prima articoli extra (in cima)
       extraData.forEach((item, index) => {
         const row = document.createElement('tr');
         row.dataset.extraIndex = index;
         row.innerHTML = `
           <td>${item.codice || ''}</td>
           <td>${item.descrizione || ''}</td>
-          <td><input type="text" value="${item.qty}" onchange="updateExtraQty(${index}, this.value)" placeholder="Quantità"></td>
+          <td><input type="text" value="${item.qty}" onchange="updateExtraQty(${index}, this.value)" placeholder="Qtà"></td>
           <td><input type="text" value="${item.prezzo}" onchange="updateExtraPrice(${index}, this.value)" placeholder="Prezzo"></td>
         `;
         tableBody.appendChild(row);
       });
 
-      // Poi articoli catalogo
       catalogData.forEach((item, index) => {
         const row = document.createElement('tr');
         row.dataset.catalogIndex = index;
         row.innerHTML = `
           <td>${item.codice || ''}</td>
           <td>${item.descrizione || ''}</td>
-          <td><input type="text" value="${item.qty}" onchange="updateCatalogQty(${index}, this.value)" placeholder="Quantità"></td>
+          <td><input type="text" value="${item.qty}" onchange="updateCatalogQty(${index}, this.value)" placeholder="Qtà"></td>
           <td><input type="text" value="${item.prezzo}" onchange="updateCatalogPrice(${index}, this.value)" placeholder="Prezzo"></td>
         `;
         tableBody.appendChild(row);
@@ -315,20 +281,18 @@
         ['Cliente:', clientName],
         ['Note:', noteText],
         [],
-        ['Codice', 'Descrizione', 'Quantità', 'Prezzo']
+        ['Codice', 'Descrizione', 'Qtà', 'Prezzo']
       ];
 
-      // Funzione helper per quantità e prezzo come richiesto
       function formatQty(qty) {
         if (!qty) return '';
         if (/^\d+$/.test(qty)) return qty + ' CT';
-        return qty; // se contiene lettere tipo 'pz' rimane com'è
+        return qty;
       }
       function formatPrice(price) {
         return price ? price : 'P.P.';
       }
 
-      // Aggiungo extra prima
       extraData.forEach(item => {
         wsData.push([
           item.codice || '',
@@ -337,7 +301,6 @@
           formatPrice(item.prezzo)
         ]);
       });
-      // Poi catalogo
       catalogData.forEach(item => {
         wsData.push([
           item.codice || '',
