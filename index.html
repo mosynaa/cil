@@ -29,7 +29,7 @@
       margin-bottom: 20px;
     }
 
-    #search, #cliente {
+    #search, #cliente, #note {
       padding: 10px;
       border: 1px solid #ccc;
       border-radius: 6px;
@@ -87,6 +87,17 @@
         font-size: 14px;
       }
     }
+
+    #aggiungiArticolo {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    #aggiungiArticolo input {
+      flex: 1 1 150px;
+    }
   </style>
 </head>
 <body>
@@ -97,6 +108,13 @@
     <button onclick="azzeraValori()">Azzera Valori</button>
     <input type="text" id="search" placeholder="Cerca un articolo...">
     <input type="text" id="cliente" placeholder="Nome cliente">
+    <input type="text" id="note" placeholder="Note generali (facoltative)">
+  </div>
+
+  <div id="aggiungiArticolo">
+    <input type="text" id="codiceExtra" placeholder="Codice articolo extra">
+    <input type="text" id="descrizioneExtra" placeholder="Descrizione articolo extra">
+    <button onclick="aggiungiExtra()">Aggiungi Articolo Extra</button>
   </div>
 
   <table id="catalogo">
@@ -116,9 +134,11 @@
     let quantita = {};
     let prezzi = {};
     let cliente = '';
+    let note = '';
 
     document.getElementById('search').addEventListener('input', mostraArticoli);
     document.getElementById('cliente').addEventListener('input', e => cliente = e.target.value);
+    document.getElementById('note').addEventListener('input', e => note = e.target.value);
 
     function caricaCSV() {
       fetch('catalogo.csv')
@@ -155,6 +175,21 @@
       });
     }
 
+    function aggiungiExtra() {
+      let codice = document.getElementById('codiceExtra').value.trim();
+      let descrizione = document.getElementById('descrizioneExtra').value.trim();
+
+      if (!codice || !descrizione) {
+        alert('Inserisci codice e descrizione');
+        return;
+      }
+
+      articoli.push({ codice, descrizione, prezzo: '' });
+      document.getElementById('codiceExtra').value = '';
+      document.getElementById('descrizioneExtra').value = '';
+      mostraArticoli();
+    }
+
     function azzeraValori() {
       quantita = {};
       prezzi = {};
@@ -162,7 +197,7 @@
     }
 
     function generaExcel() {
-      let dati = [['Cliente', cliente], [], ['Codice', 'Descrizione', 'Quantità', 'Prezzo']];
+      let dati = [['Cliente', cliente], ['Note', note], [], ['Codice', 'Descrizione', 'Quantità', 'Prezzo']];
       articoli.forEach(a => {
         let qta = quantita[a.codice];
         let prezzo = prezzi[a.codice];
