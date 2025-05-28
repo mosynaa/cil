@@ -251,33 +251,35 @@
     });
   }
 
-  function generaExcel() {
-    const cliente = nomeCliente.value.trim() || "(Non specificato)";
-    const note = noteCliente.value.trim();
-    const dati = [];
+    function generaExcel() {
+  const cliente = nomeCliente.value.trim() || "(Non specificato)";
+  const note = noteCliente.value.trim();
+  const dati = [];
 
-    dati.push(["Cliente:", cliente]);
-    if (note) dati.push(["Note:", note]);
-    dati.push([]);
-    dati.push(["Codice", "Descrizione", "Quantità", "Prezzo"]);
+  dati.push(["Cliente:", cliente]);
+  if (note) dati.push(["Note:", note]);
+  dati.push([]);
+  dati.push(["Codice", "Descrizione", "Quantità", "Prezzo"]);
 
-    Object.keys(datiSalvati).forEach(codice => {
-      const prod = prodotti.find(p => p.codice === codice);
-      const descrizione = prod ? prod.descrizione : datiSalvati[codice].descrizione;
-      if (datiSalvati[codice].qty) {
-        dati.push([
-          codice,
-          descrizione || '',
-          datiSalvati[codice].qty || 'CT',
-          datiSalvati[codice].prezzo || (prod ? prod.prezzo : 'P.P.')
-        ]);
-      }
-    });
+  Object.keys(datiSalvati).forEach(codice => {
+    const prod = prodotti.find(p => p.codice === codice);
+    const descrizione = prod ? prod.descrizione : datiSalvati[codice].descrizione;
+    if (datiSalvati[codice].qty || datiSalvati[codice].prezzo) {
+      dati.push([
+        codice,
+        descrizione || '',
+        datiSalvati[codice].qty || 'CT',
+        datiSalvati[codice].prezzo || (prod ? prod.prezzo : 'P.P.')
+      ]);
+    }
+  });
 
-    const ws = XLSX.utils.aoa_to_sheet(dati);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Ordine");
-    XLSX.writeFile(wb, `Ordine_${cliente.replace(/\s+/g, '_')}.xlsx`);
+  const ws = XLSX.utils.aoa_to_sheet(dati);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Ordine");
+  XLSX.writeFile(wb, `Ordine_${cliente.replace(/\s+/g, '_')}.xlsx`);
+}
+
   }
 
   function generaPdf() {
