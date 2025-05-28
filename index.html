@@ -11,83 +11,155 @@
       font-family: 'Poppins', sans-serif;
       background-color: #f5f7fa;
       color: #333;
-      padding: 20px;
+      padding: 15px 10px;
+      margin: 0;
     }
     h1 {
       text-align: center;
       color: #0077b6;
-      margin-bottom: 20px;
+      margin-bottom: 15px;
+      font-weight: 600;
+      font-size: 1.8rem;
     }
     .client-name, .search-bar, .extra-article, .notes, .top-buttons {
       margin-bottom: 15px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
     }
     label {
       font-weight: 600;
-      margin-right: 10px;
+      margin-right: 8px;
+      display: inline-block;
+      margin-bottom: 5px;
+      font-size: 1rem;
     }
     input[type="text"], textarea {
-      padding: 6px 10px;
-      border-radius: 5px;
+      padding: 8px 10px;
+      border-radius: 6px;
       border: 1px solid #ccc;
-      font-size: 16px;
+      font-size: 1rem;
       font-family: 'Poppins', sans-serif;
+      box-sizing: border-box;
+      width: 100%;
+      transition: border-color 0.3s ease;
     }
-    input[type="text"] {
-      width: 250px;
-      max-width: 100%;
+    input[type="text"]:focus, textarea:focus {
+      border-color: #0077b6;
+      outline: none;
     }
     textarea {
-      width: 100%;
-      font-size: 16px;
-      font-family: 'Poppins', sans-serif;
       resize: vertical;
-      min-height: 50px;
+      min-height: 70px;
     }
     button {
       background-color: #0077b6;
       color: white;
       border: none;
-      padding: 10px 15px;
+      padding: 12px 18px;
       border-radius: 8px;
       cursor: pointer;
-      margin: 5px 5px 5px 0;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: background-color 0.3s ease;
+      margin: 5px 8px 5px 0;
+      flex-shrink: 0;
     }
-    button:hover {
+    button:hover, button:focus {
       background-color: #023e8a;
+      outline: none;
     }
     table {
       width: 100%;
       border-collapse: collapse;
       background-color: white;
+      max-width: 100%;
+      margin: 0 auto 30px auto;
+      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+      border-radius: 8px;
+      overflow: hidden;
+      display: block;
     }
-    th, td {
-      padding: 10px;
-      border: 1px solid #ddd;
-      text-align: left;
-    }
-    th {
+    thead {
       background-color: #ff8500;
       color: white;
+      display: table;
+      width: 100%;
+      table-layout: fixed;
+    }
+    tbody {
+      display: block;
+      max-height: 350px;
+      overflow-y: auto;
+      width: 100%;
+    }
+    th, td {
+      padding: 12px 10px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+      word-wrap: break-word;
+      font-size: 0.95rem;
+      display: table-cell;
     }
     td input {
-      width: 80%;
-      padding: 5px;
-      font-size: 14px;
+      width: 90%;
+      padding: 6px 8px;
+      font-size: 0.95rem;
       font-family: 'Poppins', sans-serif;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
     }
-    @media (max-width: 600px) {
-      input[type="text"] {
+    td input:focus {
+      border-color: #0077b6;
+      outline: none;
+    }
+    /* Contenitore flessibile per inputs extra articolo */
+    .extra-article input[type="text"] {
+      width: calc(33.333% - 10px);
+      margin-right: 10px;
+      display: inline-block;
+    }
+    .extra-article input[type="text"]:last-child {
+      margin-right: 0;
+    }
+    /* Pulsanti sopra tabella */
+    .top-buttons {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* Responsive */
+    @media (max-width: 700px) {
+      .extra-article input[type="text"] {
         width: 100%;
         margin-bottom: 8px;
       }
       .top-buttons {
-        display: flex;
         flex-direction: column;
-        gap: 10px;
       }
       button {
         width: 100%;
-        margin: 0 0 10px 0;
+        margin: 0 0 12px 0;
+      }
+      table {
+        display: block;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      thead, tbody, tr, th, td {
+        display: table;
+        width: auto;
+        max-width: none;
+      }
+      tbody {
+        max-height: none;
+        overflow: visible;
       }
     }
   </style>
@@ -123,7 +195,7 @@
     <button onclick="resetValues()">Azzera Valori</button>
   </div>
 
-  <table id="orderTable">
+  <table id="orderTable" aria-label="Tabella ordini">
     <thead>
       <tr>
         <th>Codice</th>
@@ -132,7 +204,7 @@
         <th>Prezzo</th>
       </tr>
     </thead>
-    <tbody id="tableBody"></tbody>
+    <tbody id="tableBody" tabindex="0"></tbody>
   </table>
 
   <script>
@@ -154,7 +226,7 @@
       const tableBody = document.getElementById('tableBody');
       tableBody.innerHTML = '';
 
-      // Prima articoli extra
+      // Prima articoli extra (in cima)
       extraData.forEach((item, index) => {
         const row = document.createElement('tr');
         row.dataset.extraIndex = index;
@@ -179,39 +251,38 @@
         `;
         tableBody.appendChild(row);
       });
-
-      filterTable(); // per aggiornare subito la visibilità in base a eventuale filtro attivo
     }
 
-    // Aggiornamento dati articoli extra
-    function updateExtraQty(index, value) {
-      extraData[index].qty = value;
+    function updateExtraQty(i, val) {
+      extraData[i].qty = val;
     }
-    function updateExtraPrice(index, value) {
-      extraData[index].prezzo = value;
+    function updateExtraPrice(i, val) {
+      extraData[i].prezzo = val;
     }
-
-    // Aggiornamento dati catalogo
-    function updateCatalogQty(index, value) {
-      catalogData[index].qty = value;
+    function updateCatalogQty(i, val) {
+      catalogData[i].qty = val;
     }
-    function updateCatalogPrice(index, value) {
-      catalogData[index].prezzo = value;
+    function updateCatalogPrice(i, val) {
+      catalogData[i].prezzo = val;
     }
 
     function addExtraArticle() {
       const desc = document.getElementById('extraDesc').value.trim();
       const qty = document.getElementById('extraQty').value.trim();
       const price = document.getElementById('extraPrice').value.trim();
+
       if (!desc) {
-        alert('Inserisci una descrizione per l\'articolo extra');
+        alert('Descrizione articolo extra è obbligatoria.');
         return;
       }
-      extraData.unshift({ codice: '', descrizione: desc, qty: qty, prezzo: price }); // aggiungo in cima con unshift
-      renderTable();
+
+      extraData.unshift({ codice: '', descrizione: desc, qty: qty, prezzo: price });
+
       document.getElementById('extraDesc').value = '';
       document.getElementById('extraQty').value = '';
       document.getElementById('extraPrice').value = '';
+
+      renderTable();
     }
 
     function resetValues() {
@@ -220,66 +291,61 @@
         item.prezzo = '';
       });
       extraData = [];
-      renderTable();
       document.getElementById('noteField').value = '';
       document.getElementById('clientName').value = '';
       document.getElementById('searchInput').value = '';
+      renderTable();
     }
 
     function filterTable() {
       const filter = document.getElementById('searchInput').value.toLowerCase();
-      const tableBody = document.getElementById('tableBody');
-      tableBody.querySelectorAll('tr').forEach(row => {
-        const descr = row.cells[1].textContent.toLowerCase();
-        if (descr.includes(filter)) {
-          row.style.display = '';
-        } else {
-          row.style.display = 'none';
-        }
+      const rows = document.querySelectorAll('#tableBody tr');
+      rows.forEach(row => {
+        const desc = row.cells[1].textContent.toLowerCase();
+        row.style.display = desc.includes(filter) ? '' : 'none';
       });
     }
 
     function generateExcel() {
-      const wb = XLSX.utils.book_new();
-
       const clientName = document.getElementById('clientName').value.trim();
-      const note = document.getElementById('noteField').value.trim();
+      const noteText = document.getElementById('noteField').value.trim();
 
-      const wsData = [];
+      const wb = XLSX.utils.book_new();
+      const wsData = [
+        ['Cliente:', clientName],
+        ['Note:', noteText],
+        [],
+        ['Codice', 'Descrizione', 'Quantità', 'Prezzo']
+      ];
 
-      // Riga intestazione con nome cliente
-      wsData.push(['Nome Cliente:', clientName]);
+      // Funzione helper per quantità e prezzo come richiesto
+      function formatQty(qty) {
+        if (!qty) return '';
+        if (/^\d+$/.test(qty)) return qty + ' CT';
+        return qty; // se contiene lettere tipo 'pz' rimane com'è
+      }
+      function formatPrice(price) {
+        return price ? price : 'P.P.';
+      }
 
-      // Riga vuota
-      wsData.push([]);
-
-      // Intestazione tabella
-      wsData.push(['Codice', 'Descrizione', 'Quantità', 'Prezzo']);
-
-      // Prima gli extra
+      // Aggiungo extra prima
       extraData.forEach(item => {
-        let qty = item.qty || '';
-        if (qty && /^[0-9]+$/.test(qty)) {
-          qty += ' CT';
-        }
-        const price = item.prezzo ? item.prezzo : 'P.P.';
-        wsData.push([item.codice, item.descrizione, qty, price]);
+        wsData.push([
+          item.codice || '',
+          item.descrizione || '',
+          formatQty(item.qty),
+          formatPrice(item.prezzo)
+        ]);
       });
-
       // Poi catalogo
       catalogData.forEach(item => {
-        let qty = item.qty || '';
-        if (qty && /^[0-9]+$/.test(qty)) {
-          qty += ' CT';
-        }
-        const price = item.prezzo ? item.prezzo : 'P.P.';
-        wsData.push([item.codice, item.descrizione, qty, price]);
+        wsData.push([
+          item.codice || '',
+          item.descrizione || '',
+          formatQty(item.qty),
+          formatPrice(item.prezzo)
+        ]);
       });
-
-      if (note) {
-        wsData.push([]);
-        wsData.push(['Note:', note]);
-      }
 
       const ws = XLSX.utils.aoa_to_sheet(wsData);
       XLSX.utils.book_append_sheet(wb, ws, 'Ordine');
