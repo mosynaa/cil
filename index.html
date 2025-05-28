@@ -3,121 +3,93 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Catalogo Ordini</title>
+  <title>Gestione Ordini</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     body {
       font-family: 'Poppins', sans-serif;
-      background-color: #fefefe;
+      background-color: #f5f7fa;
       color: #333;
-      margin: 0;
       padding: 20px;
     }
-
     h1 {
       text-align: center;
-      color: #005a8d;
-      margin-bottom: 20px;
+      color: #0077b6;
     }
-
-    #controls {
+    .top-buttons {
       display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 10px;
+      justify-content: space-between;
       margin-bottom: 20px;
     }
-
-    #search, #cliente, #note {
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      flex: 1 1 200px;
-    }
-
     button {
-      background-color: #f57c00;
+      background-color: #0077b6;
       color: white;
       border: none;
-      padding: 12px 24px;
-      font-size: 16px;
+      padding: 10px 15px;
+      border-radius: 8px;
       cursor: pointer;
-      border-radius: 6px;
+      margin: 5px;
     }
-
     button:hover {
-      background-color: #e65100;
+      background-color: #023e8a;
     }
-
+    .extra-article, .notes {
+      margin-bottom: 20px;
+    }
+    .extra-article input, .notes textarea {
+      margin-right: 10px;
+      padding: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 10px;
-      background: white;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      background-color: white;
     }
-
-    th {
-      background-color: #005a8d;
-      color: white;
-      text-align: left;
+    th, td {
       padding: 10px;
-    }
-
-    td {
       border: 1px solid #ddd;
-      padding: 8px;
+      text-align: left;
     }
-
-    tr:nth-child(even) {
-      background-color: #f2f2f2;
+    th {
+      background-color: #ff8500;
+      color: white;
     }
-
-    input[type="text"], input[type="number"] {
-      width: 100%;
+    td input {
+      width: 80%;
       padding: 5px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      box-sizing: border-box;
     }
-
     @media (max-width: 600px) {
-      th, td {
+      table, th, td {
         font-size: 14px;
       }
-    }
-
-    #aggiungiArticolo {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-    }
-
-    #aggiungiArticolo input {
-      flex: 1 1 150px;
     }
   </style>
 </head>
 <body>
-  <h1>Catalogo Ordini</h1>
+  <h1>Gestione Ordini</h1>
 
-  <div id="controls">
-    <button onclick="generaExcel()">Genera Excel</button>
-    <button onclick="azzeraValori()">Azzera Valori</button>
-    <input type="text" id="search" placeholder="Cerca un articolo...">
-    <input type="text" id="cliente" placeholder="Nome cliente">
-    <input type="text" id="note" placeholder="Note generali (facoltative)">
+  <div class="top-buttons">
+    <button onclick="generateExcel()">Genera Excel</button>
+    <button onclick="resetValues()">Azzera Valori</button>
   </div>
 
-  <div id="aggiungiArticolo">
-    <input type="text" id="codiceExtra" placeholder="Codice articolo extra">
-    <input type="text" id="descrizioneExtra" placeholder="Descrizione articolo extra">
-    <button onclick="aggiungiExtra()">Aggiungi Articolo Extra</button>
+  <div class="extra-article">
+    <h3>Aggiungi Articolo Extra</h3>
+    <input type="text" id="extraDesc" placeholder="Descrizione">
+    <input type="text" id="extraQty" placeholder="Quantità">
+    <input type="text" id="extraPrice" placeholder="Prezzo">
+    <button onclick="addExtraArticle()">Aggiungi</button>
   </div>
 
-  <table id="catalogo">
+  <div class="notes">
+    <h3>Note Ordine</h3>
+    <textarea id="noteField" rows="2" style="width: 100%;" placeholder="Scrivi qui le note..."></textarea>
+  </div>
+
+  <table id="orderTable">
     <thead>
       <tr>
         <th>Codice</th>
@@ -126,110 +98,86 @@
         <th>Prezzo</th>
       </tr>
     </thead>
-    <tbody></tbody>
+    <tbody id="tableBody"></tbody>
   </table>
 
   <script>
-    let articoli = [];
-    let quantita = {};
-    let prezzi = {};
-    let cliente = '';
-    let note = '';
+    let data = [];
 
-    document.getElementById('search').addEventListener('input', mostraArticoli);
-    document.getElementById('cliente').addEventListener('input', e => cliente = e.target.value);
-    document.getElementById('note').addEventListener('input', e => note = e.target.value);
-
-    function caricaCSV() {
-      fetch('catalogo.csv')
-        .then(response => response.text())
-        .then(text => {
-          articoli = text.trim().split('\n').slice(1).map(riga => {
-            let [codice, descrizione, categoria, prezzo] = riga.split(',');
-            return { codice, descrizione, prezzo };
-          });
-          mostraArticoli();
-        });
+    async function loadCSV() {
+      const response = await fetch('https://raw.githubusercontent.com/mosynaa/ordinecil/main/catalogo.csv');
+      const text = await response.text();
+      const rows = text.split('\n').slice(1);
+      data = rows.map(row => {
+        const [codice, descrizione, categoria, prezzo] = row.split(',');
+        return { codice, descrizione, prezzo: prezzo?.trim(), qty: '' };
+      });
+      renderTable();
     }
 
-    function mostraArticoli() {
-      let filtro = document.getElementById('search').value.toLowerCase();
-      let tbody = document.querySelector('#catalogo tbody');
-      tbody.innerHTML = '';
-
-      articoli.forEach(articolo => {
-        if (
-          articolo.codice.toLowerCase().includes(filtro) ||
-          articolo.descrizione.toLowerCase().includes(filtro)
-        ) {
-          let tr = document.createElement('tr');
-
-          tr.innerHTML = `
-            <td>${articolo.codice}</td>
-            <td>${articolo.descrizione}</td>
-            <td><input type="text" placeholder="Quantità" value="${quantita[articolo.codice] || ''}" onchange="quantita['${articolo.codice}']=this.value"></td>
-            <td><input type="number" min="0" step="0.01" placeholder="Prezzo" value="${prezzi[articolo.codice] || ''}" onchange="prezzi['${articolo.codice}']=this.value"></td>
-          `;
-          tbody.appendChild(tr);
-        }
+    function renderTable() {
+      const tableBody = document.getElementById('tableBody');
+      tableBody.innerHTML = '';
+      data.forEach((item, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${item.codice || ''}</td>
+          <td>${item.descrizione || ''}</td>
+          <td><input type="text" value="${item.qty}" onchange="updateQty(${index}, this.value)"></td>
+          <td><input type="text" value="${item.prezzo}" onchange="updatePrice(${index}, this.value)"></td>
+        `;
+        tableBody.appendChild(row);
       });
     }
 
-    function aggiungiExtra() {
-      let codice = document.getElementById('codiceExtra').value.trim();
-      let descrizione = document.getElementById('descrizioneExtra').value.trim();
+    function updateQty(index, value) {
+      data[index].qty = value;
+    }
 
-      if (!codice || !descrizione) {
-        alert('Inserisci codice e descrizione');
-        return;
+    function updatePrice(index, value) {
+      data[index].prezzo = value;
+    }
+
+    function addExtraArticle() {
+      const desc = document.getElementById('extraDesc').value.trim();
+      const qty = document.getElementById('extraQty').value.trim();
+      const price = document.getElementById('extraPrice').value.trim();
+      if (desc) {
+        data.push({ codice: '', descrizione: desc, qty: qty, prezzo: price });
+        renderTable();
+        document.getElementById('extraDesc').value = '';
+        document.getElementById('extraQty').value = '';
+        document.getElementById('extraPrice').value = '';
       }
-
-      articoli.push({ codice, descrizione, prezzo: '' });
-      document.getElementById('codiceExtra').value = '';
-      document.getElementById('descrizioneExtra').value = '';
-      mostraArticoli();
     }
 
-    function azzeraValori() {
-      quantita = {};
-      prezzi = {};
-      mostraArticoli();
-    }
-
-    function generaExcel() {
-      let dati = [['Cliente', cliente], ['Note', note], [], ['Codice', 'Descrizione', 'Quantità', 'Prezzo']];
-      articoli.forEach(a => {
-        let qta = quantita[a.codice];
-        let prezzo = prezzi[a.codice];
-
-        if (qta || prezzo) {
-          let qtaExcel = '';
-          if (qta) {
-            if (/^\d+$/.test(qta.trim())) {
-              qtaExcel = qta.trim() + ' CT';
-            } else {
-              qtaExcel = qta.trim();
-            }
-          }
-
-          let prezzoExcel = prezzo ? prezzo : 'P.P.';
-
-          dati.push([
-            a.codice,
-            a.descrizione,
-            qtaExcel,
-            prezzoExcel
-          ]);
-        }
+    function resetValues() {
+      data.forEach(item => {
+        item.qty = '';
+        item.prezzo = '';
       });
+      renderTable();
+      document.getElementById('noteField').value = '';
+    }
 
-      let wb = XLSX.utils.book_new();
-      let ws = XLSX.utils.aoa_to_sheet(dati);
+    function generateExcel() {
+      const wb = XLSX.utils.book_new();
+      const wsData = [['Codice', 'Descrizione', 'Quantità', 'Prezzo']];
+      data.forEach(item => {
+        let qty = item.qty;
+        if (qty && !isNaN(qty)) qty = qty + ' CT';
+        const price = item.prezzo ? item.prezzo : 'P.P.';
+        wsData.push([item.codice, item.descrizione, qty || '', price]);
+      });
+      const note = document.getElementById('noteField').value.trim();
+      if (note) wsData.push(['', 'Note:', note, '']);
+
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
       XLSX.utils.book_append_sheet(wb, ws, 'Ordine');
       XLSX.writeFile(wb, 'ordine.xlsx');
     }
 
-    caricaCSV();
+    loadCSV();
   </script>
 </body>
 </html>
