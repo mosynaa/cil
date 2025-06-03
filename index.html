@@ -5,15 +5,49 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Catalogo Ordini</title>
   <style>
-    /* Aggiungi qui il tuo stile personalizzato */
+    body {
+      font-family: sans-serif;
+      margin: 1rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 0.5rem;
+      text-align: left;
+    }
+    th {
+      background-color: #f0f0f0;
+    }
+    input[type="number"], input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .controls > * {
+      flex: 1;
+      min-width: 150px;
+    }
   </style>
 </head>
 <body>
   <h1>Catalogo Ordini</h1>
 
-  <input type="text" id="searchInput" placeholder="Cerca per codice o descrizione" onkeyup="filterTable()"/>
+  <div class="controls">
+    <input type="text" id="cliente" placeholder="Nome cliente">
+    <input type="text" id="search" placeholder="Cerca per descrizione o codice" oninput="filterTable()">
+    <button onclick="generaExcel()">Genera Excel</button>
+  </div>
 
-  <table id="catalogoTable">
+  <table id="catalogo">
     <thead>
       <tr>
         <th>Codice</th>
@@ -21,45 +55,78 @@
         <th>Categoria</th>
         <th>Prezzo</th>
         <th>Quantità</th>
-        <th>Prezzo Pagato</th>
+        <th>P.P.</th>
       </tr>
     </thead>
-    <tbody>
-      <!-- Le righe del catalogo verranno caricate qui -->
-    </tbody>
+    <tbody></tbody>
   </table>
 
-  <table id="extraTable">
-    <thead>
-      <tr>
-        <th>Codice</th>
-        <th>Descrizione</th>
-        <th>Categoria</th>
-        <th>Prezzo</th>
-        <th>Quantità</th>
-        <th>Prezzo Pagato</th>
-      </tr>
-    </thead>
-    <tbody>
-      <!-- Altri dati opzionali -->
-    </tbody>
-  </table>
-
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script>
+    const DATA_URL = "https://raw.githubusercontent.com/mosynaa/ordinecil/main/catalogo.csv";
+
+    fetch(DATA_URL)
+      .then(response => response.text())
+      .then(text => {
+        const rows = text.trim().split("\n").slice(1);
+        const tbody = document.querySelector("#catalogo tbody");
+
+        rows.forEach(row => {
+          const [codice, descrizione, categoria, prezzo] = row.split(",");
+          const tr = document.createElement("tr");
+
+          tr.innerHTML = `
+            <td>${codice}</td>
+            <td>${descrizione}</td>
+            <td>${categoria}</td>
+            <td>${prezzo}</td>
+            <td><input type="number" min="0" placeholder="CT"></td>
+            <td><input type="number" step="0.01" placeholder="P.P."></td>
+          `;
+
+          tbody.appendChild(tr);
+        });
+      });
+
     function filterTable() {
-      const input = document.getElementById("searchInput").value.toLowerCase();
-      const rows = document.querySelectorAll("#catalogoTable tbody tr, #extraTable tbody tr");
+      const searchValue = document.getElementById("search").value.toLowerCase();
+      const rows = document.querySelectorAll("#catalogo tbody tr");
 
       rows.forEach(row => {
-        const codice = row.querySelector("td:nth-child(1)")?.textContent.toLowerCase() || "";
-        const descrizione = row.querySelector("td:nth-child(2)")?.textContent.toLowerCase() || "";
+        const codice = row.querySelector("td:nth-child(1)").textContent.toLowerCase();
+        const descrizione = row.querySelector("td:nth-child(2)").textContent.toLowerCase();
 
-        if (codice.includes(input) || descrizione.includes(input)) {
+        if (codice.includes(searchValue) || descrizione.includes(searchValue)) {
           row.style.display = "";
         } else {
           row.style.display = "none";
         }
       });
+    }
+
+    function generaExcel() {
+      const cliente = document.getElementById("cliente").value || "Ordine";
+      const rows = document.querySelectorAll("#catalogo tbody tr");
+      const data = [["Codice", "Descrizione", "Categoria", "Prezzo", "Quantità", "P.P."]];
+
+      rows.forEach(row => {
+        const qty = row.querySelector("td:nth-child(5) input").value;
+        const pp = row.querySelector("td:nth-child(6) input").value;
+
+        if (qty || pp) {
+          const values = Array.from(row.querySelectorAll("td"))
+            .slice(0, 4)
+            .map(td => td.textContent);
+          values.push(qty || "", pp || "");
+          data.push(values);
+        }
+      });
+
+      const worksheet = XLSX.utils.aoa_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Ordine");
+
+      XLSX.writeFile(workbook, `${cliente}.xlsx`);
     }
   </script>
 </body>
