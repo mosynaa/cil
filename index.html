@@ -299,22 +299,18 @@
     }
 
     // Funzione filtro ricerca con mantenimento dati
-   function filterTable() {
-    const input = document.getElementById("searchInput").value.toLowerCase();
-    const rows = document.querySelectorAll("#extraTable tbody tr, #catalogoTable tbody tr");
-
-    rows.forEach(row => {
-        const descrizione = row.querySelector("td:nth-child(2)")?.textContent.toLowerCase() || "";
-        const codice = row.querySelector("td:nth-child(1)")?.textContent.toLowerCase() || "";
-
-        if (descrizione.includes(input) || codice.includes(input)) {
-            row.style.display = "";
+    function filterTable() {
+      const filter = document.getElementById('searchInput').value.toLowerCase();
+      const tbody = document.getElementById('tableBody');
+      [...tbody.rows].forEach(row => {
+        const descr = row.cells[1].textContent.toLowerCase();
+        if (descr.includes(filter)) {
+          row.style.display = '';
         } else {
-            row.style.display = "none";
+          row.style.display = 'none';
         }
-    });
-}
-
+      });
+    }
 
     // Funzione per resettare tutti i dati
     function resetValues() {
