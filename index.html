@@ -326,11 +326,7 @@
       }
     }
 
-    // GENERAZIONE FILE EXCEL
-    function generateExcel() {
-      const wb = XLSX.utils.book_new();
-      const wsData = [];
-      const client = document.getElementById('clientName').value || 'Cliente';
+    
 
       // Intestazione e note
       wsData.push([`Ordine di: ${client}`]);
